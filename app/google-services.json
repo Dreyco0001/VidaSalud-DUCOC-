@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "526261516457",
+    "project_id": "vidasalud-ducoc",
+    "storage_bucket": "vidasalud-ducoc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:526261516457:android:c445957605a165b69d51b8",
+        "android_client_info": {
+          "package_name": "com.example.vidasalud"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoHFSSJdtPJAG-y0yMsr9ojH4msGTqQS8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
