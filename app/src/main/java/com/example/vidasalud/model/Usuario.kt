@@ -1,6 +1,6 @@
 package com.example.vidasalud.model
 
-data class User (
+data class Usuario (
     val correo: String = "",
     val clave: String = "",
     val nombre: String = "",
