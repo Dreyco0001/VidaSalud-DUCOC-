@@ -1,4 +1,4 @@
-package com.example.vidasalud.ui.screens.perfil
+package com.example.vidasalud.ui.screens.pago
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -9,9 +9,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 
 @Composable
-fun PerfilAdminScreen(
-    nombre: String = "Administrador",
-    onLogout: () -> Unit = {}
+fun PagoConfirmacionScreen(
+    nombreUsuario: String = "Cliente", // Recibir el nombre del usuario
+    onVolverAlPerfil: () -> Unit = {} // Cambiar nombre del parámetro
 ) {
     Column(
         modifier = Modifier
@@ -21,38 +21,36 @@ fun PerfilAdminScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            "Panel de Administrador",
+            "¡Pago Confirmado!",
             style = MaterialTheme.typography.headlineMedium,
-            color = Color(0xFFD32F2F)
+            color = Color(0xFF4CAF50)
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            "Bienvenido $nombre",  // Muestra el nombre del admin
+            "Tu pedido ha sido procesado exitosamente",
             style = MaterialTheme.typography.bodyLarge
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            "Rol: Administrador",
+            "Recibirás una confirmación por correo electrónico",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = {
-
-                onLogout()
-            },
+            onClick = onVolverAlPerfil,
+            modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFD32F2F)
+                containerColor = Color(0xFF4CAF50)
             )
         ) {
-            Text("Cerrar Sesión")
+            Text("Volver al Perfil de $nombreUsuario")
         }
     }
 }
