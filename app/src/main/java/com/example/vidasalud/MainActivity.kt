@@ -12,7 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.vidasalud.ui.screens.splash.SplashScreen
-import com.example.vidasalud.ui.screens.login.Login
+import com.example.vidasalud.ui.screens.login.LoginScreen
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -39,7 +39,7 @@ fun MiApp() {
             if (!showLogin) {
                 SplashScreen()
             } else {
-                Login()
+                LoginScreen()
             }
         }
     }
