@@ -1,4 +1,4 @@
-package com.example.vidasalud.repositry
+package com.example.vidasalud.repository
 
 import com.example.vidasalud.model.Usuario
 import com.google.firebase.auth.FirebaseAuth
