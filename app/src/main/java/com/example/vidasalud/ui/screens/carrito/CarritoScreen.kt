@@ -173,7 +173,7 @@ fun CarritoScreen(
 
 @Composable
 fun ItemCarrito(
-    item: com.example.nombrecaso.model.ItemCarrito,
+    item: com.example.vidasalud.model.ItemCarrito,
     onEliminar: () -> Unit
 ) {
     Card(
