@@ -1,13 +1,13 @@
 package com.example.vidasalud.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle. viewModelScope
+import androidx.lifecycle.viewModelScope
 import com.example.vidasalud.repository.UsuarioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class UsuarioViewModel : ViewModel() {
+class RegistroViewModel : ViewModel() {
     private val repositorio = UsuarioRepository()
 
     private val _cargando = MutableStateFlow(false)
