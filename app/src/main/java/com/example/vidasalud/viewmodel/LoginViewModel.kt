@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+
 class LoginViewModel : ViewModel() {
     private val repositorio = AuthRepository()
     private val _usuario = MutableStateFlow<Usuario?>(null)
@@ -17,13 +18,15 @@ class LoginViewModel : ViewModel() {
     val cargaLogin: StateFlow<Boolean> = _cargaLogin
 
     fun login(correo: String, clave: String) {
-        _cargaLogin.value = true
-        try {
-            _usuario.value = repositorio.login(correo, clave)
-        } catch (e: Exception) {
-            _usuario.value = null
-        } finally {
-            _cargaLogin.value = false
+        viewModelScope.launch {
+            _cargaLogin.value = true
+            try {
+                _usuario.value = repositorio.login(correo, clave)
+            } catch (e: Exception) {
+                _usuario.value = null
+            } finally {
+                _cargaLogin.value = false
+            }
         }
     }
-  }
+}

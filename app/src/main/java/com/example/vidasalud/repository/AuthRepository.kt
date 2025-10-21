@@ -17,8 +17,8 @@ class AuthRepository {
             if (usuario != null ) {
                 getUserFromFirestore(usuario.uid, correo) ?: Usuario (
                     correo = correo,
-                    nombre = if (correo == "admin@nombrecaso.cl") "Administrador" else "Usuario",
-                    rol = if (correo == "admin@nombrecaso.cl") "admin" else "cliente"
+                    nombre = if (correo == "admin@vidasalud.cl") "Administrador" else "Usuario",
+                    rol = if (correo == "admin1@vidasalud.cl") "admin" else "cliente"
                 )
             } else null
         }catch (e: Exception) {

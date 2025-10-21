@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp //Controlar el tamaño de los elementos
 import androidx.compose.ui.graphics.Color //Controlar el color de los elementos
 
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.vidasalud.repositry.AuthRepository
+import com.example.vidasalud.repository.AuthRepository
 import com.example.vidasalud.viewmodel.LoginViewModel
 
 
