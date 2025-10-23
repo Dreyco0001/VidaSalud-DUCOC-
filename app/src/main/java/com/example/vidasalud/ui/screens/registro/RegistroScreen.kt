@@ -1,9 +1,11 @@
 package com.example.vidasalud.ui.screens.registro
 
 import android.widget.Toast
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +32,6 @@ fun RegistroScreen(
     val registroExitoso by viewModel.registroExitoso.collectAsState()
     val errorMensaje by viewModel.errorMensaje.collectAsState()
 
-    // Observar éxito del registro
     LaunchedEffect(registroExitoso) {
         if (registroExitoso) {
             Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
@@ -38,7 +39,6 @@ fun RegistroScreen(
         }
     }
 
-    // Observar errores
     LaunchedEffect(errorMensaje) {
         if (errorMensaje.isNotEmpty()) {
             Toast.makeText(context, errorMensaje, Toast.LENGTH_LONG).show()
@@ -52,27 +52,14 @@ fun RegistroScreen(
             .verticalScroll(rememberScrollState())
     ) {
         // Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = {
-                Toast.makeText(context, "Volver presionado", Toast.LENGTH_SHORT).show()
-                onBack()
-            }) {
-                Text("← Volver")
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                "Registrarse",
-                style = MaterialTheme.typography.headlineSmall,
-                color = Color(0xFF4CAF50)
-            )
-        }
+        Text(
+            "Registrarse",
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color(0xFF4CAF50)
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Campos del formulario
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it },
@@ -145,5 +132,20 @@ fun RegistroScreen(
             style = MaterialTheme.typography.bodySmall,
             color = Color.Gray
         )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Botón Volver al final del formulario
+        TextButton(
+            onClick = onBack,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = Color(0xFF2242C9)
+            )
+        ) {
+            Text("← Volver", style = MaterialTheme.typography.bodyLarge)
+        }
     }
 }
