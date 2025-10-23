@@ -14,7 +14,7 @@ class AuthRepository {
         return try {
             //Intentar autenticar con auth
             when {
-                correo == "admin@nombrecaso.cl" -> {
+                correo == "admin@vidasalud.cl" -> {
                     //Autenticación con Firebase Auth
                     val resultado = auth.signInWithEmailAndPassword(correo, clave).await()
                     Usuario(
@@ -43,7 +43,7 @@ class AuthRepository {
                 .get()
                 .await()
 
-            if (!query.isEmpty) {
+            if (!query.isEmpty && query.documents.isNotEmpty()) {
                 val doc = query.documents[0]
                 Usuario(
                     correo = doc.getString("correo") ?: "",
