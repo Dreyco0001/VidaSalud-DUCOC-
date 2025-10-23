@@ -51,37 +51,30 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
         }
     }
     //Configuración para organizar los elementos de la pantalla usando el componente Column()
-    Column (
+    Column(
         modifier = Modifier
-            .fillMaxSize() //Rellenar todo el espacio diponible de la pantalla
+            .fillMaxSize()
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
-    ){
-        //Componente tipo Text() para agregar un título
+    ) {
         Text("Inciar Sesión",
             style = MaterialTheme.typography.headlineSmall,
             color = Color(0xFF4CAF50))
 
-        //Componente Spacer() para agregar un separador entre los elementos
         Spacer(Modifier.height(46.dp))
 
-        //Componente tipo OutlinedTextField() para ingresar datos por usuario
         OutlinedTextField(
-            //Variable para el nombre del usuario
-            value = correo, //Cambiar
-            onValueChange = { correo = it }, //Cambiar
+            value = correo,
+            onValueChange = { correo = it },
             label = { Text("Usuario", color = Color(0xFFFF5722))},
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
 
-        //Componente Spacer() para agregar un separador entre los elementos
         Spacer(Modifier.height(10.dp))
 
-        //Componente tipo OutlinedTextField() para ingresar datos por usuario
         OutlinedTextField(
-            //Variable para la clave del usuario
             value = pass,
             onValueChange = { pass = it },
             label = { Text("Clave", color = Color(0xFFFF5722))},
@@ -91,12 +84,10 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
             modifier = Modifier.fillMaxWidth()
         )
 
-        //Componente Spacer() para agregar un separador entre los elementos
         Spacer(Modifier.height(30.dp))
 
-        //Componente Button() para agrega un boton
         Button(
-            onClick = { //Cambiar
+            onClick = {
                 if (correo.isEmpty() || pass.isEmpty()) {
                     Toast.makeText(context, "Completar todos los campos", Toast.LENGTH_SHORT).show()
                     return@Button
@@ -104,19 +95,33 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
                 viewModel.login(correo, pass)
             },
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF81154C), contentColor = Color(0xFFC7F9CC))
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF81154C),
+                contentColor = Color(0xFFC7F9CC)
+            )
         ) {
-            if (carga){
+            if (carga) {
                 CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
             } else {
                 Text("Entrar")
             }
         }
+
+        Spacer(Modifier.height(24.dp))
+
+        TextButton(
+            onClick = onRegisterClick,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(bottom = 16.dp)
+        ) {
+            Text(
+                "No tengo una cuenta",
+                color = Color(0xFF2242C9),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+
     }
 
-    //Boton para agregar registro
-    Spacer(Modifier.height(16.dp))
-    TextButton(onClick = onRegisterClick) {
-        Text("No tengo una cuenta", color = Color(0xFF2242C9))
-    }
 }

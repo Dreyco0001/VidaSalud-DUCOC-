@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.example.vidasalud.navigation.AppNavegacion
 import com.example.vidasalud.ui.screens.splash.SplashScreen
 import com.example.vidasalud.ui.screens.login.LoginScreen
 import kotlinx.coroutines.delay
@@ -39,7 +40,7 @@ fun MiApp() {
             if (!showLogin) {
                 SplashScreen()
             } else {
-                LoginScreen()
+                AppNavegacion()
             }
         }
     }

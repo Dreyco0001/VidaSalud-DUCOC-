@@ -56,7 +56,10 @@ fun RegistroScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) {
+            TextButton(onClick = {
+                Toast.makeText(context, "Volver presionado", Toast.LENGTH_SHORT).show()
+                onBack()
+            }) {
                 Text("← Volver")
             }
             Spacer(modifier = Modifier.weight(1f))
