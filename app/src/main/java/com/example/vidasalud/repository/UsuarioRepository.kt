@@ -22,7 +22,9 @@ class UsuarioRepository {
                     "nombre" to nombre,
                     "correo" to correo,
                     "clave" to clave,
-                    "rol" to "cliente" // ¡IMPORTANTE! Asignar un rol por defecto
+                    "rol" to "cliente",
+                    "fechaRegistro" to getCurrentDate()
+
                 )
 
                 // 3. Guardar el objeto en la colección "users" de Firestore
