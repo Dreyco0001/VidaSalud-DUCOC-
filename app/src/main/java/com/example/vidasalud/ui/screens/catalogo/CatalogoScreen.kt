@@ -19,10 +19,13 @@ import com.example.vidasalud.viewmodel.CarritoViewModel
 
 @Composable
 fun CatalogoScreen(
-    onVerCarrito: () -> Unit = {},
-    onConfirmarPago: () -> Unit = {}
+    viewModel: CarritoViewModel = viewModel(),
+    rol: String = "cliente",        // "admin" o "cliente"
+    nombre: String = "Cliente",
+    onVerPerfil: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    onVerCarrito: () -> Unit = {}
 ) {
-    val viewModel: CarritoViewModel = viewModel()
     val productos by viewModel.productos.collectAsState()
     val cargando by viewModel.cargando.collectAsState()
     val carrito by viewModel.carrito.collectAsState()
@@ -32,7 +35,7 @@ fun CatalogoScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Header
+        // Header con botones globales
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -44,18 +47,38 @@ fun CatalogoScreen(
                 fontSize = 20.sp
             )
 
-            // Botón del carrito con badge
-            BadgedBox(
-                badge = {
-                    if (carrito.isNotEmpty()) {
-                        Badge {
-                            Text(carrito.sumOf { it.cantidad }.toString())
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Botón perfil
+                Button(
+                    onClick = onVerPerfil,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
+                ) {
+                    Text("Perfil")
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Botón logout
+                Button(
+                    onClick = onLogout,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                ) {
+                    Text("Cerrar sesión")
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Botón carrito con badge
+                BadgedBox(
+                    badge = {
+                        if (carrito.isNotEmpty()) {
+                            Badge { Text(carrito.sumOf { it.cantidad }.toString()) }
                         }
                     }
-                }
-            ) {
-                IconButton(onClick = onVerCarrito) {
-                    Icon(Icons.Default.ShoppingCart, contentDescription = "Carrito")
+                ) {
+                    IconButton(onClick = onVerCarrito) {
+                        Icon(Icons.Default.ShoppingCart, contentDescription = "Carrito")
+                    }
                 }
             }
         }
@@ -85,6 +108,15 @@ fun CatalogoScreen(
     }
 }
 
+private fun ButtonDefaults.buttonColors(containerColor: Any): ButtonColors {
+    return TODO("Provide the return value")
+}
+
+@Composable
+fun Color(x0: Long) {
+    TODO("Not yet implemented")
+}
+
 @Composable
 fun ProductoItem(
     producto: com.example.vidasalud.model.Producto,
@@ -92,12 +124,8 @@ fun ProductoItem(
     onEliminar: () -> Unit,
     cantidadEnCarrito: Int
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = producto.nombre,
                 style = MaterialTheme.typography.headlineSmall,
@@ -115,7 +143,6 @@ fun ProductoItem(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Controles de cantidad
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -128,13 +155,8 @@ fun ProductoItem(
                 )
 
                 if (cantidadEnCarrito > 0) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(
-                            onClick = onEliminar,
-                            modifier = Modifier.size(32.dp)
-                        ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onEliminar, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                         }
 
@@ -145,10 +167,7 @@ fun ProductoItem(
                             modifier = Modifier.padding(horizontal = 8.dp)
                         )
 
-                        IconButton(
-                            onClick = onAgregar,
-                            modifier = Modifier.size(32.dp)
-                        ) {
+                        IconButton(onClick = onAgregar, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Default.Add, contentDescription = "Agregar")
                         }
                     }

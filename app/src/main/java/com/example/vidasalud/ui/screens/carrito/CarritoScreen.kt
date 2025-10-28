@@ -5,21 +5,25 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vidasalud.viewmodel.CarritoViewModel
 
 @Composable
 fun CarritoScreen(
+    rol: String = "cliente",
+    nombre: String = "Cliente",
     onVolverAlCatalogo: () -> Unit = {},
     onConfirmarPago: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    onVerPerfil: () -> Unit = {},
     viewModel: CarritoViewModel
 ) {
     val carrito by viewModel.carrito.collectAsState()
@@ -30,31 +34,54 @@ fun CarritoScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Header
+
+        // 🔹 HEADER con usuario, perfil y logout
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             TextButton(onClick = onVolverAlCatalogo) {
                 Text("← Volver al Catálogo")
             }
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                "Mi Carrito",
-                style = MaterialTheme.typography.headlineSmall
-            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Hola, $nombre",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(onClick = onVerPerfil) {
+                    Icon(Icons.Default.Person, contentDescription = "Perfil")
+                }
+
+                IconButton(onClick = onLogout) {
+                    Icon(Icons.Default.Delete, contentDescription = "Cerrar Sesión", tint = Color.Red)
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // 🔹 Título
+        Text(
+            "Mi Carrito",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         if (carrito.isEmpty()) {
+            // 🔹 Carrito vacío
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         Icons.Default.ShoppingCart,
                         contentDescription = "Carrito vacío",
@@ -70,7 +97,7 @@ fun CarritoScreen(
                 }
             }
         } else {
-            // Lista de productos en el carrito
+            // 🔹 Lista de productos
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -85,25 +112,16 @@ fun CarritoScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Resumen y botones
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    // Información del pedido
+            // 🔹 Resumen del pedido
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            "Productos:",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Text("Productos:", style = MaterialTheme.typography.bodyMedium)
                         Text(
                             carrito.sumOf { it.cantidad }.toString(),
-                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -114,33 +132,25 @@ fun CarritoScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            "Total:",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("Total:", style = MaterialTheme.typography.titleMedium)
                         Text(
                             "$${String.format("%.2f", total)}",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF4CAF50)
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.Bold
                         )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Botones de acción
+                    // 🔹 Botones de acción
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Botón vaciar carrito
                         OutlinedButton(
                             onClick = { viewModel.vaciarCarrito() },
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color.Red
-                            )
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
                         ) {
                             Icon(
                                 Icons.Default.Delete,
@@ -151,7 +161,6 @@ fun CarritoScreen(
                             Text("Vaciar Todo")
                         }
 
-                        // Botón confirmar compra
                         Button(
                             onClick = {
                                 viewModel.confirmarCompra()
@@ -186,50 +195,19 @@ fun ItemCarrito(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(item.producto.nombre, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Precio: $${item.producto.precio} c/u")
+                Text("Cantidad: ${item.cantidad}")
                 Text(
-                    text = item.producto.nombre,
-                    style = MaterialTheme.typography.bodyLarge,
+                    "Subtotal: $${String.format("%.2f", item.producto.precio * item.cantidad)}",
+                    color = Color(0xFF2196F3),
                     fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Precio: $${item.producto.precio} c/u",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Cantidad: ${item.cantidad}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Subtotal: $${String.format("%.2f", item.producto.precio * item.cantidad)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2196F3)
                 )
             }
-
-            // Botón eliminar producto
-            IconButton(
-                onClick = onEliminar,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Eliminar producto",
-                    tint = Color.Red
-                )
+            IconButton(onClick = onEliminar, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Default.Delete, contentDescription = "Eliminar producto", tint = Color.Red)
             }
         }
     }

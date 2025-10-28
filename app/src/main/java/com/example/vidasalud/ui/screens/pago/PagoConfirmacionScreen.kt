@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.Color
 @Composable
 fun PagoConfirmacionScreen(
     nombreUsuario: String = "Cliente", // Recibir el nombre del usuario
-    onVolverAlPerfil: () -> Unit = {} // Cambiar nombre del parámetro
+    onVolverAlCatalogo: () -> Unit = {} // Cambiar nombre del parámetro
 ) {
     Column(
         modifier = Modifier
@@ -44,7 +44,7 @@ fun PagoConfirmacionScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = onVolverAlPerfil,
+            onClick = onVolverAlCatalogo,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF4CAF50)
