@@ -37,6 +37,7 @@ fun AppNavegacion() {
                     // Navegar según el rol pasando el nombre como parámetro
                     when (user.rol) {
                         "admin" -> navController.navigate("perfil_admin/${user.nombre}")
+                       // modificar este pedazo para que mande a catalogo, tambien nos toca agregar catalogo como opcion
                         else -> navController.navigate("perfil_cliente/${user.nombre}")
                     }
                 }
@@ -45,6 +46,7 @@ fun AppNavegacion() {
 
 
         composable("register") {
+            //el registro no guarda de momento en el que escribi el comentario
             RegistroScreen(
                 onBack = { navController.popBackStack() },
                 onRegisterSuccess = {
