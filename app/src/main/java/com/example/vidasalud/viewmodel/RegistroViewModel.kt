@@ -39,12 +39,21 @@ class RegistroViewModel : ViewModel() {
         _errorMensaje.value = ""
 
         viewModelScope.launch {
-            val exitoso = repositorio.registroUsuario(correo, clave, nombre)
+            _cargando.value = true
+            _errorMensaje.value = "" // Limpiar errores previos
+
+            // Llamar a la función del repositorio que hemos creado
+            repositorio.registrarUsuario(correo, clave, nombre)
+                .onSuccess {
+                    // Si el registro y guardado en Firestore fue exitoso
+                    _registroExitoso.value = true
+                }
+                .onFailure { exception ->
+                    // Si hubo un error (ej: email ya en uso, no hay internet, etc.)
+                    _errorMensaje.value = exception.message ?: "Error desconocido en el registro"
+                }
+
             _cargando.value = false
-            _registroExitoso.value = exitoso
-            if (!exitoso) {
-                _errorMensaje.value = "Error al registrar usuario"
-            }
         }
     }
 
