@@ -21,12 +21,13 @@ class UsuarioRepository {
                 val nuevoUsuario = hashMapOf(
                     "nombre" to nombre,
                     "correo" to correo,
+                    "clave" to clave,
                     "rol" to "cliente" // ¡IMPORTANTE! Asignar un rol por defecto
                 )
 
                 // 3. Guardar el objeto en la colección "users" de Firestore
                 // Usamos el UID del usuario de Auth como ID del documento
-                db.collection("users").document(firebaseUser.uid)
+                db.collection("usuario").document(firebaseUser.uid)
                     .set(nuevoUsuario)
                     .await() // Espera a que la operación de guardado termine
 
