@@ -48,6 +48,8 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
                 else -> "Bienvenido: ${it.nombre}"
             }
             Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+            onLoginSuccess(it)
+            viewModel.clearUser()
         }
     }
     //Configuración para organizar los elementos de la pantalla usando el componente Column()

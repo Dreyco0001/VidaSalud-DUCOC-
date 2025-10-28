@@ -29,4 +29,8 @@ class LoginViewModel : ViewModel() {
             }
         }
     }
+
+    fun clearUser() {
+        _usuario.value = null
+    }
 }

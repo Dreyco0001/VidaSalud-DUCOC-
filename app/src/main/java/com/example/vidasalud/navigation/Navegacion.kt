@@ -13,7 +13,7 @@ import com.example.vidasalud.ui.screens.perfil.PerfilAdminScreen
 import com.example.vidasalud.ui.screens.perfil.PerfilClienteScreen
 
 import com.example.vidasalud.ui.screens.carrito.CarritoScreen
-import com.example.vidasalud.ui.screens.catalogo.CatalogoScreen
+
 import com.example.vidasalud.ui.screens.pago.PagoConfirmacionScreen
 import com.example.vidasalud.viewmodel.CarritoViewModel
 
@@ -27,56 +27,31 @@ fun AppNavegacion() {
         navController = navController,
         startDestination = "login"
     ) {
-        // 🔹 Login
+
         composable("login") {
             LoginScreen(
-                onRegisterClick = { navController.navigate("register") },
+                onRegisterClick = {
+                    navController.navigate("register")
+                },
                 onLoginSuccess = { user ->
-                    // Ahora el login siempre manda al catálogo
-                    navController.navigate("catalogo/${user.rol}/${user.nombre}") {
-                        popUpTo("login") { inclusive = true }
+                    // Navegar según el rol pasando el nombre como parámetro
+                    when (user.rol) {
+                        "admin" -> navController.navigate("perfil_admin/${user.nombre}")
+                        else -> navController.navigate("perfil_cliente/${user.nombre}")
                     }
                 }
             )
         }
 
-        // 🔹 Registro
+
         composable("register") {
             RegistroScreen(
                 onBack = { navController.popBackStack() },
-                onRegisterSuccess = { navController.popBackStack() }
+                onRegisterSuccess = {
+                    navController.popBackStack()
+                }
             )
         }
-
-        // 🔹 Catálogo (Hub principal)
-        composable(
-            "catalogo/{rol}/{nombre}",
-            arguments = listOf(
-                navArgument("rol") { type = NavType.StringType },
-                navArgument("nombre") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val rol = backStackEntry.arguments?.getString("rol") ?: "cliente"
-            val nombre = backStackEntry.arguments?.getString("nombre") ?: "Cliente"
-
-            CatalogoScreen(
-                onVerCarrito = { navController.navigate("carrito/${nombre}") },
-                onVerPerfil = {
-                    when (rol.lowercase()) {
-                        "admin" -> navController.navigate("perfil_admin/$nombre")
-                        else -> navController.navigate("perfil_cliente/$nombre")
-                    }
-                },
-                onLogout = {
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
-                viewModel = carritoViewModel
-            )
-        }
-
-        // 🔹 Perfil Admin
         composable(
             "perfil_admin/{nombre}",
             arguments = listOf(navArgument("nombre") { type = NavType.StringType })
@@ -85,14 +60,15 @@ fun AppNavegacion() {
             PerfilAdminScreen(
                 nombre = nombre,
                 onLogout = {
+                    // Volver al login limpiando el back stack
                     navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(0) { inclusive = true}
                     }
                 }
             )
         }
 
-        // 🔹 Perfil Cliente
+
         composable(
             "perfil_cliente/{nombre}",
             arguments = listOf(navArgument("nombre") { type = NavType.StringType })
@@ -101,37 +77,52 @@ fun AppNavegacion() {
             PerfilClienteScreen(
                 nombre = nombre,
                 onLogout = {
+
+                    // Volver al login limpiando el back stack
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
+                }, //Agregar navegacion al carrito
+                onVerCarrito = {
+                    navController.navigate("carrito")
                 },
-                onVerCarrito = { navController.navigate("carrito/$nombre") },
+
                 viewModel = carritoViewModel
             )
         }
 
-        // 🔹 Carrito
-        composable(
-            "carrito/{nombre}",
-            arguments = listOf(navArgument("nombre") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val nombre = backStackEntry.arguments?.getString("nombre") ?: "Cliente"
+        //Agregar pantalla de carrito
+        composable("carrito") {
+
+
+
+
             CarritoScreen(
-                onVolverAlCatalogo = { navController.popBackStack() },
-                onConfirmarPago = { navController.navigate("pago/$nombre") },
+                onVolverAlCatalogo = {
+                    navController.popBackStack()
+                },
+                onConfirmarPago = {
+                    navController.navigate("pago") {
+                        popUpTo("perfil_cliente") { inclusive = false }
+                    }
+                },
                 viewModel = carritoViewModel
             )
         }
 
-        // 🔹 Pago
-        composable(
-            "pago/{nombre}",
-            arguments = listOf(navArgument("nombre") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val nombre = backStackEntry.arguments?.getString("nombre") ?: "Cliente"
+        // Agregar pantalla de confirmación de pago
+        composable("pago") { backStackEntry ->
+            // Obtener el nombre del usuario de alguna manera
+            // Por ahora usamos un valor por defecto
+
+
             PagoConfirmacionScreen(
-                nombreUsuario = nombre,
-                onVolverAlCatalogo = { navController.navigate("catalogo/cliente/$nombre") }
+                nombreUsuario = "Cliente",
+                onVolverAlCatalogo = {
+                    navController.navigate("perfil_cliente/Cliente") {
+                        popUpTo("login") { inclusive = false}
+                    }
+                }
             )
         }
     }
