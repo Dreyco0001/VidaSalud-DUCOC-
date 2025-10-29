@@ -13,7 +13,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.vidasalud.navigation.AppNavegacion
 import com.example.vidasalud.ui.screens.splash.SplashScreen
-import com.example.vidasalud.ui.screens.login.LoginScreen
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {

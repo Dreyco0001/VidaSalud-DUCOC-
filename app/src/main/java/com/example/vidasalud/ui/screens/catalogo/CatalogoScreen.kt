@@ -11,17 +11,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.vidasalud.model.Producto
 import com.example.vidasalud.viewmodel.CarritoViewModel
 
 @Composable
 fun CatalogoScreen(
     viewModel: CarritoViewModel = viewModel(),
-    rol: String = "cliente",        // "admin" o "cliente"
     nombre: String = "Cliente",
+    rol: String = "cliente",
     onVerPerfil: () -> Unit = {},
     onLogout: () -> Unit = {},
     onVerCarrito: () -> Unit = {}
@@ -35,40 +37,27 @@ fun CatalogoScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Header con botones globales
+        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Catálogo de Productos",
+                "Hola, $nombre",
                 style = MaterialTheme.typography.headlineSmall,
                 fontSize = 20.sp
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Botón perfil
-                Button(
-                    onClick = onVerPerfil,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
-                ) {
+                Button(onClick = onVerPerfil, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))) {
                     Text("Perfil")
                 }
-
                 Spacer(modifier = Modifier.width(8.dp))
-
-                // Botón logout
-                Button(
-                    onClick = onLogout,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
-                ) {
+                Button(onClick = onLogout, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)) {
                     Text("Cerrar sesión")
                 }
-
                 Spacer(modifier = Modifier.width(8.dp))
-
-                // Botón carrito con badge
                 BadgedBox(
                     badge = {
                         if (carrito.isNotEmpty()) {
@@ -86,10 +75,7 @@ fun CatalogoScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (cargando) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
@@ -108,39 +94,18 @@ fun CatalogoScreen(
     }
 }
 
-private fun ButtonDefaults.buttonColors(containerColor: Any): ButtonColors {
-    return TODO("Provide the return value")
-}
-
-@Composable
-fun Color(x0: Long) {
-    TODO("Not yet implemented")
-}
-
 @Composable
 fun ProductoItem(
-    producto: com.example.vidasalud.model.Producto,
+    producto: Producto,
     onAgregar: () -> Unit,
     onEliminar: () -> Unit,
     cantidadEnCarrito: Int
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = producto.nombre,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
+            Text(producto.nombre, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "$${producto.precio}",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-
+            Text("$${producto.precio}", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
@@ -148,33 +113,16 @@ fun ProductoItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Stock: ${producto.stock}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("Stock: ${producto.stock}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 if (cantidadEnCarrito > 0) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onEliminar, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar")
-                        }
-
-                        Text(
-                            text = cantidadEnCarrito.toString(),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-
-                        IconButton(onClick = onAgregar, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Add, contentDescription = "Agregar")
-                        }
+                        IconButton(onClick = onEliminar, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, contentDescription = "Eliminar") }
+                        Text(cantidadEnCarrito.toString(), modifier = Modifier.padding(horizontal = 8.dp), fontWeight = FontWeight.Bold)
+                        IconButton(onClick = onAgregar, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Add, contentDescription = "Agregar") }
                     }
                 } else {
-                    Button(onClick = onAgregar) {
-                        Text("Agregar al carrito")
-                    }
+                    Button(onClick = onAgregar) { Text("Agregar al carrito") }
                 }
             }
         }

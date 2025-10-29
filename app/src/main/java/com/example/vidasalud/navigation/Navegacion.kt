@@ -1,5 +1,6 @@
 package com.example.vidasalud.navigation
 
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -11,12 +12,10 @@ import com.example.vidasalud.ui.screens.login.LoginScreen
 import com.example.vidasalud.ui.screens.registro.RegistroScreen
 import com.example.vidasalud.ui.screens.perfil.PerfilAdminScreen
 import com.example.vidasalud.ui.screens.perfil.PerfilClienteScreen
-
 import com.example.vidasalud.ui.screens.carrito.CarritoScreen
-
+import com.example.vidasalud.ui.screens.catalogo.CatalogoScreen
 import com.example.vidasalud.ui.screens.pago.PagoConfirmacionScreen
 import com.example.vidasalud.viewmodel.CarritoViewModel
-
 
 @Composable
 fun AppNavegacion() {
@@ -28,25 +27,38 @@ fun AppNavegacion() {
         startDestination = "login"
     ) {
 
+        // Login
         composable("login") {
             LoginScreen(
                 onRegisterClick = {
                     navController.navigate("register")
                 },
                 onLoginSuccess = { user ->
-                    // Navegar según el rol pasando el nombre como parámetro
-                    when (user.rol) {
-                        "admin" -> navController.navigate("perfil_admin/${user.nombre}")
-                       // modificar este pedazo para que mande a catalogo, tambien nos toca agregar catalogo como opcion
-                        else -> navController.navigate("perfil_cliente/${user.nombre}")
+                    when (user.rol.lowercase()) {
+                        "admin" -> {
+                            navController.navigate("perfil_admin/${user.nombre}") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
+                        "cliente" -> {
+                            navController.navigate("catalogo/${user.nombre}") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
+                        else -> {
+                            Toast.makeText(
+                                navController.context,
+                                "Rol desconocido: ${user.rol}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
                 }
             )
         }
 
-
+        // Registro
         composable("register") {
-            //el registro no guarda de momento en el que escribi el comentario
             RegistroScreen(
                 onBack = { navController.popBackStack() },
                 onRegisterSuccess = {
@@ -54,6 +66,8 @@ fun AppNavegacion() {
                 }
             )
         }
+
+        // Perfil Admin
         composable(
             "perfil_admin/{nombre}",
             arguments = listOf(navArgument("nombre") { type = NavType.StringType })
@@ -62,15 +76,14 @@ fun AppNavegacion() {
             PerfilAdminScreen(
                 nombre = nombre,
                 onLogout = {
-                    // Volver al login limpiando el back stack
                     navController.navigate("login") {
-                        popUpTo(0) { inclusive = true}
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )
         }
 
-
+        // Perfil Cliente
         composable(
             "perfil_cliente/{nombre}",
             arguments = listOf(navArgument("nombre") { type = NavType.StringType })
@@ -79,50 +92,61 @@ fun AppNavegacion() {
             PerfilClienteScreen(
                 nombre = nombre,
                 onLogout = {
-
-                    // Volver al login limpiando el back stack
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
-                }, //Agregar navegacion al carrito
+                },
                 onVerCarrito = {
                     navController.navigate("carrito")
                 },
-
                 viewModel = carritoViewModel
             )
         }
 
-        //Agregar pantalla de carrito
+        // Catalogo
+        composable(
+            "catalogo/{nombre}",
+            arguments = listOf(navArgument("nombre") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val nombre = backStackEntry.arguments?.getString("nombre") ?: "Cliente"
+            CatalogoScreen(
+                nombre = nombre,
+                onVerPerfil = {
+                    navController.navigate("perfil_cliente/$nombre")
+                },
+                onLogout = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onVerCarrito = {
+                    navController.navigate("carrito")
+                }
+            )
+        }
+
+        // Carrito
         composable("carrito") {
-
-
-
-
             CarritoScreen(
+                viewModel = carritoViewModel,
                 onVolverAlCatalogo = {
                     navController.popBackStack()
                 },
                 onConfirmarPago = {
                     navController.navigate("pago") {
-                        popUpTo("perfil_cliente") { inclusive = false }
+                        popUpTo("catalogo") { inclusive = false }
                     }
-                },
-                viewModel = carritoViewModel
+                }
             )
         }
 
-        // Agregar pantalla de confirmación de pago
-        composable("pago") { backStackEntry ->
-            // Obtener el nombre del usuario de alguna manera
-            // Por ahora usamos un valor por defecto
-
-
+        // Confirmacion de Pago
+        composable("pago") {
             PagoConfirmacionScreen(
                 nombreUsuario = "Cliente",
                 onVolverAlCatalogo = {
-                    navController.navigate("perfil_cliente/Cliente") {
-                        popUpTo("login") { inclusive = false}
+                    navController.navigate("catalogo/Cliente") {
+                        popUpTo("login") { inclusive = false }
                     }
                 }
             )
