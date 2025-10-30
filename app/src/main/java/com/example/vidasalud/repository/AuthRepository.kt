@@ -12,34 +12,35 @@ class AuthRepository {
 
     suspend fun login(correo: String, clave: String): Usuario? {
         return try {
-            //Intentar autenticar con auth
-            when {
-                correo == "admin@vidasalud.cl" -> {
-                    //Autenticación con Firebase Auth
-                    val resultado = auth.signInWithEmailAndPassword(correo, clave).await()
-                    Usuario(
-                        correo = correo,
-                        nombre = "Administrador",
-                        rol = "admin"
-                    )
-                }
-                else -> {
-                    //Autenticación con la colección usuario de Firestore
-                    loginWithFirestore(correo,clave)
-                }
+            // 1. Autenticar a TODOS los usuarios con Firebase Authentication.
+            val authResult = auth.signInWithEmailAndPassword(correo, clave).await()
+
+            // 2. Si la autenticación es exitosa, buscar los datos del usuario en Firestore.
+            if (authResult.user != null) {
+                fetchUserDataFromFirestore(correo)
+            } else {
+                null
             }
-        } catch (e: Exception){
+        } catch (e: Exception) {
+            // Esto capturará intentos de login fallidos (contraseña incorrecta, usuario no encontrado, etc.)
             null
         }
     }
 
-
-
-    private suspend fun loginWithFirestore(correo: String, clave: String): Usuario? {
+    private suspend fun fetchUserDataFromFirestore(correo: String): Usuario? {
         return try {
+            // Caso especial para el admin.
+            if (correo == "admin@vidasalud.cl") {
+                return Usuario(
+                    correo = correo,
+                    nombre = "Administrador",
+                    rol = "admin"
+                )
+            }
+
+            // Para los demás usuarios, obtener sus datos de la colección "usuario".
             val query = db.collection("usuario")
                 .whereEqualTo("correo", correo)
-                .whereEqualTo("clave", clave)
                 .get()
                 .await()
 
@@ -47,15 +48,18 @@ class AuthRepository {
                 val doc = query.documents[0]
                 Usuario(
                     correo = doc.getString("correo") ?: "",
-                    clave = doc.getString("clave") ?: "",
+                    // Ya no necesitamos la clave aquí. Asumimos que el constructor de Usuario
+                    // tiene un valor por defecto o permite construirlo sin la clave.
                     nombre = doc.getString("nombre") ?: "Cliente",
                     rol = doc.getString("rol") ?: "cliente"
                 )
-            } else null
+            } else {
+                // El usuario existe en Firebase Auth, pero no tiene un registro en la colección "usuario".
+                // Devolvemos null para indicar un perfil incompleto.
+                null
+            }
         } catch (e: Exception) {
             null
         }
     }
-
-
 }
