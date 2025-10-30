@@ -1,10 +1,9 @@
 package com.example.vidasalud.repository
 
-import  com.example.vidasalud.model.Usuario
+import com.example.vidasalud.model.Usuario
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-
 
 class AuthRepository {
     private val auth = FirebaseAuth.getInstance()
@@ -12,24 +11,24 @@ class AuthRepository {
 
     suspend fun login(correo: String, clave: String): Usuario? {
         return try {
-            // 1. Autenticar a TODOS los usuarios con Firebase Authentication.
+            // 1. Autenticar al usuario con Firebase Authentication
             val authResult = auth.signInWithEmailAndPassword(correo, clave).await()
+            val firebaseUser = authResult.user
 
-            // 2. Si la autenticación es exitosa, buscar los datos del usuario en Firestore.
-            if (authResult.user != null) {
-                fetchUserDataFromFirestore(correo)
+            if (firebaseUser != null) {
+                fetchUserDataFromFirestore(firebaseUser.uid, correo)
             } else {
                 null
             }
         } catch (e: Exception) {
-            // Esto capturará intentos de login fallidos (contraseña incorrecta, usuario no encontrado, etc.)
+            // Captura errores de autenticación
             null
         }
     }
 
-    private suspend fun fetchUserDataFromFirestore(correo: String): Usuario? {
+    private suspend fun fetchUserDataFromFirestore(uid: String, correo: String): Usuario? {
         return try {
-            // Caso especial para el admin.
+            // Caso especial para el admin
             if (correo == "admin@vidasalud.cl") {
                 return Usuario(
                     correo = correo,
@@ -38,24 +37,20 @@ class AuthRepository {
                 )
             }
 
-            // Para los demás usuarios, obtener sus datos de la colección "usuario".
-            val query = db.collection("usuario")
-                .whereEqualTo("correo", correo)
+            // Obtener el documento directamente por UID
+            val docSnapshot = db.collection("usuario")
+                .document(uid)
                 .get()
                 .await()
 
-            if (!query.isEmpty && query.documents.isNotEmpty()) {
-                val doc = query.documents[0]
+            if (docSnapshot.exists()) {
                 Usuario(
-                    correo = doc.getString("correo") ?: "",
-                    // Ya no necesitamos la clave aquí. Asumimos que el constructor de Usuario
-                    // tiene un valor por defecto o permite construirlo sin la clave.
-                    nombre = doc.getString("nombre") ?: "Cliente",
-                    rol = doc.getString("rol") ?: "cliente"
+                    correo = docSnapshot.getString("correo") ?: correo,
+                    nombre = docSnapshot.getString("nombre") ?: "Cliente",
+                    rol = docSnapshot.getString("rol") ?: "cliente"
                 )
             } else {
-                // El usuario existe en Firebase Auth, pero no tiene un registro en la colección "usuario".
-                // Devolvemos null para indicar un perfil incompleto.
+                // Usuario registrado en Auth pero sin datos en Firestore
                 null
             }
         } catch (e: Exception) {

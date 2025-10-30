@@ -103,23 +103,39 @@ fun AppNavegacion() {
                     }
                 },
                 onVerCarrito = {
-                    navController.navigate("carrito")
+                    val nombreEncoded = Uri.encode(nombre)
+                    val rolEncoded = Uri.encode(rol)
+                    navController.navigate("carrito/$nombreEncoded/$rolEncoded")
                 }
+
             )
         }
 
         // CARRITO
-        composable("carrito") {
+        composable(
+            route = "carrito/{nombre}/{rol}",
+            arguments = listOf(
+                navArgument("nombre") { type = NavType.StringType; defaultValue = "Usuario" },
+                navArgument("rol") { type = NavType.StringType; defaultValue = "cliente" }
+            )
+        ) { backStackEntry ->
+            val nombre = backStackEntry.arguments?.getString("nombre") ?: "Usuario"
+            val rol = backStackEntry.arguments?.getString("rol") ?: "cliente"
+
             CarritoScreen(
-                viewModel = carritoViewModel,
-                onVolverAlCatalogo = { navController.popBackStack() },
-                onConfirmarPago = {
-                    navController.navigate("pago") {
-                        popUpTo("catalogo") { inclusive = false }
+                nombre = nombre,
+                onVerPerfil = { navController.navigate("perfil/$nombre/$rol") },
+                onLogout = {
+                    navController.navigate("login") {
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                        launchSingleTop = true
                     }
-                }
+                },
+                onVerDetallePlan = { plan -> println("Iniciando plan: ${plan.nombre}") },
+                onVolverAlCatalogo = { navController.popBackStack() }
             )
         }
+
 
         // PAGO
         composable("pago") {

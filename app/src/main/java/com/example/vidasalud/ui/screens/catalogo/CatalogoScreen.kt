@@ -1,14 +1,34 @@
 package com.example.vidasalud.ui.screens.catalogo
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.vidasalud.model.Producto
 import com.example.vidasalud.viewmodel.CarritoViewModel
 
 @Composable
@@ -37,7 +56,7 @@ fun CatalogoScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Header principal
+        // 🔹 HEADER principal
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -51,7 +70,6 @@ fun CatalogoScreen(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Botón perfil
                 Button(
                     onClick = onVerPerfil,
                     modifier = Modifier.height(44.dp),
@@ -60,7 +78,6 @@ fun CatalogoScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Botón cerrar sesión
                 Button(
                     onClick = onLogout,
                     modifier = Modifier.height(44.dp),
@@ -69,7 +86,6 @@ fun CatalogoScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Botón carrito
                 BadgedBox(
                     badge = {
                         if (carrito.isNotEmpty()) {
@@ -81,29 +97,58 @@ fun CatalogoScreen(
                         onClick = onVerCarrito,
                         modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(Icons.Default.ShoppingCart, contentDescription = "Carrito")
+                        Icon(Icons.Default.FitnessCenter, contentDescription = "Planes de ejercicio")
                     }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        // Botón de gestión para admin
-        if (rol.equals("admin", ignoreCase = true)) {
-            Button(
-                onClick = { /* Abrir gestión de productos */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF03A9F4))
-            ) {
-                Text("🛠️ Gestionar productos", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+// 🔹 Plan de ejercicio de prueba
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF03A9F4).copy(alpha = 0.1f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Plan de prueba: Cardio Express", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Duración: 20 min")
+                Text("Nivel: Básico")
+                Text("Objetivo: Activar cuerpo rápidamente", color = Color.DarkGray)
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { /* acción de iniciar plan */ },
+                    modifier = Modifier.align(Alignment.End),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF03A9F4))
+                ) {
+                    Text("Iniciar Plan")
+                }
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Contenido principal: lista de productos
+
+        // 🔹 Botón para ver planes de ejercicio
+        Button(
+            onClick = onVerCarrito,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF03A9F4))
+        ) {
+            Icon(
+                Icons.Default.FitnessCenter,
+                contentDescription = "Planes de ejercicio",
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Ver Planes de Ejercicio", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 🔹 Lista de productos (placeholder para futuros datos)
         if (cargando) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -114,75 +159,21 @@ fun CatalogoScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(productos) { producto ->
-                    ProductoItem(
-                        producto = producto,
-                        onAgregar = { viewModel.agregarAlCarrito(producto) },
-                        onEliminar = { viewModel.removerDelCarrito(producto) },
-                        cantidadEnCarrito = carrito.find { it.producto.id == producto.id }?.cantidad ?: 0
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProductoItem(
-    producto: Producto,
-    onAgregar: () -> Unit,
-    onEliminar: () -> Unit,
-    cantidadEnCarrito: Int
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                producto.nombre,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                "$${producto.precio}",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Stock: ${producto.stock}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                if (cantidadEnCarrito > 0) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onEliminar, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar")
-                        }
-                        Text(
-                            cantidadEnCarrito.toString(),
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            fontWeight = FontWeight.Bold
-                        )
-                        IconButton(onClick = onAgregar, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.Add, contentDescription = "Agregar")
-                        }
-                    }
-                } else {
-                    Button(
-                        onClick = onAgregar,
-                        modifier = Modifier.height(36.dp)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
-                        Text("Agregar al carrito", fontSize = 14.sp)
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(producto.nombre, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("$${producto.precio}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Stock: ${producto.stock}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Button(onClick = { viewModel.agregarAlCarrito(producto) }) {
+                                Text("Agregar al carrito")
+                            }
+                        }
                     }
                 }
             }

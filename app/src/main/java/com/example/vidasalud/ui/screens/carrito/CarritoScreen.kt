@@ -4,9 +4,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,200 +15,114 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.vidasalud.viewmodel.CarritoViewModel
+
+data class PlanEjercicio(
+    val id: Int,
+    val nombre: String,
+    val duracion: String,
+    val nivel: String,
+    val objetivo: String,
+    val color: Color
+)
 
 @Composable
 fun CarritoScreen(
-    rol: String = "cliente",
-    nombre: String = "Cliente",
-    onVolverAlCatalogo: () -> Unit = {},
-    onConfirmarPago: () -> Unit = {},
-    onLogout: () -> Unit = {},
+    nombre: String = "Usuario",
     onVerPerfil: () -> Unit = {},
-    viewModel: CarritoViewModel
+    onLogout: () -> Unit = {},
+    onVerDetallePlan: (PlanEjercicio) -> Unit = {},
+    onVolverAlCatalogo: () -> Unit = {}
 ) {
-    val carrito by viewModel.carrito.collectAsState()
-    val total by remember { derivedStateOf { viewModel.obtenerTotal() } }
+    val planes = remember {
+        listOf(
+            PlanEjercicio(1, "Cardio Vital", "30 min", "Intermedio", "Mejorar resistencia", Color(0xFFFF9800)),
+            PlanEjercicio(2, "Fuerza Total", "45 min", "Avanzado", "Aumentar masa muscular", Color(0xFF4CAF50)),
+            PlanEjercicio(3, "Yoga Zen", "25 min", "Básico", "Reducir estrés y mejorar flexibilidad", Color(0xFF9C27B0)),
+            PlanEjercicio(4, "Rutina Express", "15 min", "Básico", "Activar cuerpo rápidamente", Color(0xFF03A9F4))
+        )
+    }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+        modifier = Modifier.fillMaxSize().padding(16.dp)
     ) {
+        // 🔹 BOTÓN VOLVER
+        TextButton(onClick = onVolverAlCatalogo) {
+            Text("← Volver al Catálogo", style = MaterialTheme.typography.bodyLarge)
+        }
 
-        // 🔹 HEADER con usuario, perfil y logout
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 🔹 HEADER
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            TextButton(onClick = onVolverAlCatalogo) {
-                Text("← Volver al Catálogo")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.HealthAndSafety, contentDescription = "Salud", tint = Color(0xFF4CAF50))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Hola, $nombre",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray
+                )
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "Hola, $nombre",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
                 IconButton(onClick = onVerPerfil) {
                     Icon(Icons.Default.Person, contentDescription = "Perfil")
                 }
-
                 IconButton(onClick = onLogout) {
-                    Icon(Icons.Default.Delete, contentDescription = "Cerrar Sesión", tint = Color.Red)
+                    Icon(Icons.Default.FitnessCenter, contentDescription = "Cerrar Sesión", tint = Color.Red)
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // 🔹 Título
+        // 🔹 Título principal
         Text(
-            "Mi Carrito",
+            "Planes de Ejercicio Saludables",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (carrito.isEmpty()) {
-            // 🔹 Carrito vacío
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.ShoppingCart,
-                        contentDescription = "Carrito vacío",
-                        modifier = Modifier.size(64.dp),
-                        tint = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "El carrito está vacío",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Gray
-                    )
-                }
-            }
-        } else {
-            // 🔹 Lista de productos
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(carrito, key = { it.producto.id }) { item ->
-                    ItemCarrito(
-                        item = item,
-                        onEliminar = { viewModel.eliminarProductoDelCarrito(item.producto) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 🔹 Resumen del pedido
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+        // 🔹 Lista de planes
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(planes, key = { it.id }) { plan ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = plan.color.copy(alpha = 0.1f)),
+                    elevation = CardDefaults.cardElevation(3.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
                     ) {
-                        Text("Productos:", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            carrito.sumOf { it.cantidad }.toString(),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Total:", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "$${String.format("%.2f", total)}",
-                            color = Color(0xFF4CAF50),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // 🔹 Botones de acción
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { viewModel.vaciarCarrito() },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
-                        ) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Vaciar carrito",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Vaciar Todo")
-                        }
+                        Text(plan.nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Duración: ${plan.duracion}")
+                        Text("Nivel: ${plan.nivel}")
+                        Text("Objetivo: ${plan.objetivo}", color = Color.DarkGray)
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         Button(
-                            onClick = {
-                                viewModel.confirmarCompra()
-                                onConfirmarPago()
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50)
-                            )
+                            onClick = { onVerDetallePlan(plan) },
+                            modifier = Modifier.align(Alignment.End),
+                            colors = ButtonDefaults.buttonColors(containerColor = plan.color)
                         ) {
-                            Text("Confirmar Compra")
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Iniciar")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Iniciar Plan")
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun ItemCarrito(
-    item: com.example.vidasalud.model.ItemCarrito,
-    onEliminar: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(item.producto.nombre, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Precio: $${item.producto.precio} c/u")
-                Text("Cantidad: ${item.cantidad}")
-                Text(
-                    "Subtotal: $${String.format("%.2f", item.producto.precio * item.cantidad)}",
-                    color = Color(0xFF2196F3),
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            IconButton(onClick = onEliminar, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "Eliminar producto", tint = Color.Red)
             }
         }
     }
