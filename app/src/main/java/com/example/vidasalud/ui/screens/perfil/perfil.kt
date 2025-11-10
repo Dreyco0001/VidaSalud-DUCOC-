@@ -1,17 +1,39 @@
 package com.example.vidasalud.ui.screens.perfil
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,7 +41,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import java.io.InputStream
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 
 @Composable
 fun PerfilScreen(
@@ -30,71 +53,104 @@ fun PerfilScreen(
 ) {
     val context = LocalContext.current
 
-    // Cargar URI guardada (persistente)
-    var fotoUri by remember {
-        mutableStateOf(loadProfileImageUri(context))
-    }
+    var fotoUri by remember { mutableStateOf(loadProfileImageUri(context)) }
     var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
 
-    // Si existe una URI guardada, cargar su imagen al entrar
+    // Carga persistente
     LaunchedEffect(fotoUri) {
         fotoUri?.let {
             try {
-                val stream: InputStream? = context.contentResolver.openInputStream(it)
-                bitmap = BitmapFactory.decodeStream(stream)
-                stream?.close()
+                context.contentResolver.openInputStream(it)?.use { stream ->
+                    bitmap = BitmapFactory.decodeStream(stream)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
 
-    // Launcher cámara
+    // ✅ Permiso launcher general
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        // Solo mostramos si se otorga o no
+        if (result.values.all { it }) {
+            println("✅ Permisos otorgados")
+        } else {
+            println("❌ Permisos denegados")
+        }
+    }
+
+    // 📸 Cámara
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
             fotoUri?.let { uri ->
-                saveProfileImageUri(context, uri) // Guardar persistente
-                val stream: InputStream? = context.contentResolver.openInputStream(uri)
-                bitmap = BitmapFactory.decodeStream(stream)
-                stream?.close()
+                saveProfileImageUri(context, uri)
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    bitmap = BitmapFactory.decodeStream(stream)
+                }
             }
         }
     }
 
-    // Launcher galería
+    // 🖼️ Galería
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
-        uri?.let { selectedUri ->
-            fotoUri = selectedUri
-            saveProfileImageUri(context, selectedUri) // Guardar persistente
-            val stream: InputStream? = context.contentResolver.openInputStream(selectedUri)
-            bitmap = BitmapFactory.decodeStream(stream)
-            stream?.close()
+        uri?.let {
+            fotoUri = it
+            saveProfileImageUri(context, it)
+            context.contentResolver.openInputStream(it)?.use { stream ->
+                bitmap = BitmapFactory.decodeStream(stream)
+            }
         }
     }
 
-    // Crear URI para cámara
+    // 👉 Crea URI temporal
     fun crearFotoUri(): Uri {
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "perfil_${System.currentTimeMillis()}.jpg")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
         }
-        return context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)!!
+        return context.contentResolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        )!!
     }
 
+    // 👉 Pedir permisos cámara
+    fun solicitarPermisoCamara(onGranted: () -> Unit) {
+        val permiso = Manifest.permission.CAMERA
+        if (ContextCompat.checkSelfPermission(context, permiso) == PackageManager.PERMISSION_GRANTED) {
+            onGranted()
+        } else {
+            permissionLauncher.launch(arrayOf(permiso))
+        }
+    }
+
+    // 👉 Pedir permisos galería
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    fun solicitarPermisoGaleria(onGranted: () -> Unit) {
+        val permiso = Manifest.permission.READ_MEDIA_IMAGES
+        if (ContextCompat.checkSelfPermission(context, permiso) == PackageManager.PERMISSION_GRANTED) {
+            onGranted()
+        } else {
+            permissionLauncher.launch(arrayOf(permiso))
+        }
+    }
+
+    // 🧩 UI
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Imagen de perfil
+        // Imagen o placeholder
         if (bitmap != null) {
             Image(
                 bitmap = bitmap!!.asImageBitmap(),
@@ -104,7 +160,6 @@ fun PerfilScreen(
                     .clip(CircleShape)
             )
         } else {
-            // Placeholder
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -116,27 +171,31 @@ fun PerfilScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            "Bienvenido, $nombre",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
+        Text("Bienvenido, $nombre", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         Text("Rol: ${rol.uppercase()}")
-
         Spacer(modifier = Modifier.height(24.dp))
 
         Row {
+            // 📸 Cámara
             Button(onClick = {
-                val uri = crearFotoUri()
-                fotoUri = uri
-                cameraLauncher.launch(uri)
+                solicitarPermisoCamara {
+                    val uri = crearFotoUri()
+                    fotoUri = uri
+                    cameraLauncher.launch(uri)
+                }
             }) {
                 Text("📸 Cámara")
             }
+
             Spacer(modifier = Modifier.width(16.dp))
-            Button(onClick = { galleryLauncher.launch("image/*") }) {
+
+            // 🖼️ Galería
+            Button(onClick = {
+                solicitarPermisoGaleria {
+                    galleryLauncher.launch("image/*")
+                }
+            }) {
                 Text("🖼️ Galería")
             }
         }
@@ -159,14 +218,16 @@ fun PerfilScreen(
     }
 }
 
-// Funciones para guardar/cargar la URI de forma persistente
+// Guardar URI
+@SuppressLint("UseKtx")
 private fun saveProfileImageUri(context: Context, uri: Uri) {
     val prefs = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
     prefs.edit().putString("profile_image_uri", uri.toString()).apply()
 }
 
+// Cargar URI
 private fun loadProfileImageUri(context: Context): Uri? {
     val prefs = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
     val uriString = prefs.getString("profile_image_uri", null)
-    return uriString?.let { Uri.parse(it) }
+    return uriString?.toUri()
 }
