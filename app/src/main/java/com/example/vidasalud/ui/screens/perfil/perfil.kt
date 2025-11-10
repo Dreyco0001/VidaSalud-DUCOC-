@@ -1,6 +1,7 @@
 package com.example.vidasalud.ui.screens.perfil
 
 import android.content.ContentValues
+import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.MediaStore
@@ -16,8 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import java.io.InputStream
 
 @Composable
@@ -28,8 +29,25 @@ fun PerfilScreen(
     onVerCatalogo: () -> Unit
 ) {
     val context = LocalContext.current
-    var fotoUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Cargar URI guardada (persistente)
+    var fotoUri by remember {
+        mutableStateOf(loadProfileImageUri(context))
+    }
     var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+    // Si existe una URI guardada, cargar su imagen al entrar
+    LaunchedEffect(fotoUri) {
+        fotoUri?.let {
+            try {
+                val stream: InputStream? = context.contentResolver.openInputStream(it)
+                bitmap = BitmapFactory.decodeStream(stream)
+                stream?.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     // Launcher cámara
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -37,8 +55,10 @@ fun PerfilScreen(
     ) { success ->
         if (success) {
             fotoUri?.let { uri ->
+                saveProfileImageUri(context, uri) // Guardar persistente
                 val stream: InputStream? = context.contentResolver.openInputStream(uri)
                 bitmap = BitmapFactory.decodeStream(stream)
+                stream?.close()
             }
         }
     }
@@ -49,8 +69,10 @@ fun PerfilScreen(
     ) { uri ->
         uri?.let { selectedUri ->
             fotoUri = selectedUri
+            saveProfileImageUri(context, selectedUri) // Guardar persistente
             val stream: InputStream? = context.contentResolver.openInputStream(selectedUri)
             bitmap = BitmapFactory.decodeStream(stream)
+            stream?.close()
         }
     }
 
@@ -64,7 +86,9 @@ fun PerfilScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -75,12 +99,16 @@ fun PerfilScreen(
             Image(
                 bitmap = bitmap!!.asImageBitmap(),
                 contentDescription = "Foto de perfil",
-                modifier = Modifier.size(120.dp).clip(CircleShape)
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
             )
         } else {
             // Placeholder
             Box(
-                modifier = Modifier.size(120.dp).clip(CircleShape),
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text("👤", fontWeight = FontWeight.Bold)
@@ -89,7 +117,11 @@ fun PerfilScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Bienvenido, $nombre", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+            "Bienvenido, $nombre",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Text("Rol: ${rol.uppercase()}")
 
@@ -117,8 +149,24 @@ fun PerfilScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = onLogout, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error), modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = onLogout,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Cerrar sesión")
         }
     }
+}
+
+// Funciones para guardar/cargar la URI de forma persistente
+private fun saveProfileImageUri(context: Context, uri: Uri) {
+    val prefs = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
+    prefs.edit().putString("profile_image_uri", uri.toString()).apply()
+}
+
+private fun loadProfileImageUri(context: Context): Uri? {
+    val prefs = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
+    val uriString = prefs.getString("profile_image_uri", null)
+    return uriString?.let { Uri.parse(it) }
 }
