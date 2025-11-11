@@ -2,6 +2,7 @@ package com.example.vidasalud.repository
 
 import com.example.vidasalud.model.Usuario
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -10,18 +11,16 @@ class AuthRepository {
     private val db = FirebaseFirestore.getInstance()
 
     suspend fun login(correo: String, clave: String): Usuario? {
-        return try {
-            // 1. Autenticar al usuario con Firebase Authentication
-            val authResult = auth.signInWithEmailAndPassword(correo, clave).await()
-            val firebaseUser = authResult.user
+        // Se intenta iniciar sesión directamente.
+        // signInWithEmailAndPassword lanzará una excepción específica si el usuario no existe
+        // o si la contraseña es incorrecta. Estas excepciones se manejan en el ViewModel.
+        val authResult = auth.signInWithEmailAndPassword(correo, clave).await()
+        val firebaseUser = authResult.user
 
-            if (firebaseUser != null) {
-                fetchUserDataFromFirestore(firebaseUser.uid, correo)
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            // Captura errores de autenticación
+        // Si la autenticación es exitosa, se buscan los datos del usuario en Firestore.
+        return if (firebaseUser != null) {
+            fetchUserDataFromFirestore(firebaseUser.uid, correo)
+        } else {
             null
         }
     }

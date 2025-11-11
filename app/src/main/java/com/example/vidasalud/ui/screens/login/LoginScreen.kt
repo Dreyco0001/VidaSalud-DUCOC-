@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp //Controlar el tamaño de los elementos
 
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vidasalud.R
-import com.example.vidasalud.repository.AuthRepository
 import com.example.vidasalud.viewmodel.LoginViewModel
 
 
@@ -39,8 +38,7 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
     //Variable para almacenar en nombre del usuario
     val user by viewModel.usuario.collectAsState() //*Cambiar
     val carga by viewModel.cargaLogin.collectAsState()
-
-    val repositorio = AuthRepository() //Agregar al nuevo LoginScreen
+    val loginError by viewModel.loginError.collectAsState()
 
     //Variable para almacenar la clave del usuario
     var pass by remember { mutableStateOf("") }
@@ -55,6 +53,13 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
             Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
             onLoginSuccess(it)
             viewModel.clearUser()
+        }
+    }
+
+    LaunchedEffect(loginError) {
+        loginError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            viewModel.clearError()
         }
     }
 
@@ -118,6 +123,10 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
                     onClick = {
                         if (correo.isEmpty() || pass.isEmpty()) {
                             Toast.makeText(context, "Completar todos los campos", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (!correo.contains("@")) {
+                            Toast.makeText(context, "El correo no es válido", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         viewModel.login(correo, pass)
