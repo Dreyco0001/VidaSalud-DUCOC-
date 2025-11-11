@@ -13,30 +13,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -49,7 +33,8 @@ fun PerfilScreen(
     nombre: String,
     rol: String,
     onLogout: () -> Unit,
-    onVerCatalogo: () -> Unit
+    onVerCatalogo: () -> Unit,
+    onGestionAdmin: () -> Unit = {} // 🔹 acción futura para admin
 ) {
     val context = LocalContext.current
 
@@ -69,16 +54,12 @@ fun PerfilScreen(
         }
     }
 
-    // ✅ Permiso launcher general
+    // ✅ Permisos
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
-        // Solo mostramos si se otorga o no
-        if (result.values.all { it }) {
-            println("✅ Permisos otorgados")
-        } else {
-            println("❌ Permisos denegados")
-        }
+        if (result.values.all { it }) println("✅ Permisos otorgados")
+        else println("❌ Permisos denegados")
     }
 
     // 📸 Cámara
@@ -108,7 +89,6 @@ fun PerfilScreen(
         }
     }
 
-    // 👉 Crea URI temporal
     fun crearFotoUri(): Uri {
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "perfil_${System.currentTimeMillis()}.jpg")
@@ -120,7 +100,6 @@ fun PerfilScreen(
         )!!
     }
 
-    // 👉 Pedir permisos cámara
     fun solicitarPermisoCamara(onGranted: () -> Unit) {
         val permiso = Manifest.permission.CAMERA
         if (ContextCompat.checkSelfPermission(context, permiso) == PackageManager.PERMISSION_GRANTED) {
@@ -130,7 +109,6 @@ fun PerfilScreen(
         }
     }
 
-    // 👉 Pedir permisos galería
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     fun solicitarPermisoGaleria(onGranted: () -> Unit) {
         val permiso = Manifest.permission.READ_MEDIA_IMAGES
@@ -150,7 +128,6 @@ fun PerfilScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Imagen o placeholder
         if (bitmap != null) {
             Image(
                 bitmap = bitmap!!.asImageBitmap(),
@@ -177,7 +154,6 @@ fun PerfilScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Row {
-            // 📸 Cámara
             Button(onClick = {
                 solicitarPermisoCamara {
                     val uri = crearFotoUri()
@@ -190,7 +166,6 @@ fun PerfilScreen(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // 🖼️ Galería
             Button(onClick = {
                 solicitarPermisoGaleria {
                     galleryLauncher.launch("image/*")
@@ -201,6 +176,19 @@ fun PerfilScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+
+        // 🔹 Solo visible si el rol es ADMIN
+        if (rol.lowercase() == "admin") {
+            Button(
+                onClick = { onGestionAdmin() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
+            ) {
+                Text("⚙️ Gestionar aplicación", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         Button(onClick = onVerCatalogo, modifier = Modifier.fillMaxWidth()) {
             Text("Ir al catálogo")
