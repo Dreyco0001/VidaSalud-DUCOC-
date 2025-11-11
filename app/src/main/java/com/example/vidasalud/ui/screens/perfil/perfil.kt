@@ -27,6 +27,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import coil.compose.rememberAsyncImagePainter
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
 @Composable
 fun PerfilScreen(
@@ -34,14 +42,38 @@ fun PerfilScreen(
     rol: String,
     onLogout: () -> Unit,
     onVerCatalogo: () -> Unit,
-    onGestionAdmin: () -> Unit = {} // 🔹 acción futura para admin
+    onGestionAdmin: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    var fotoUri by remember { mutableStateOf(loadProfileImageUri(context)) }
+    var fotoUri by remember { mutableStateOf<Uri?>(loadProfileImageUri(context)) }
     var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var fotoFirebaseUrl by remember { mutableStateOf<String?>(null) }
 
-    // Carga persistente
+    val storage = FirebaseStorage.getInstance()
+    val firestore = FirebaseFirestore.getInstance()
+    val user = FirebaseAuth.getInstance().currentUser
+
+    // ✅ Escucha en tiempo real los cambios de la foto en Firestore
+    LaunchedEffect(user?.uid) {
+        user?.let {
+            firestore.collection("usuario").document(it.uid)
+                .addSnapshotListener { snapshot, e ->
+                    if (e != null) {
+                        println("❌ Error escuchando Firestore: ${e.message}")
+                        return@addSnapshotListener
+                    }
+                    val url = snapshot?.getString("fotoPerfil")
+                    if (!url.isNullOrEmpty()) {
+                        fotoFirebaseUrl = url
+                        println("🔄 URL de foto actualizada desde Firestore: $url")
+                    }
+                }
+        }
+    }
+
+    // ✅ Carga local (persistente)
     LaunchedEffect(fotoUri) {
         fotoUri?.let {
             try {
@@ -50,6 +82,32 @@ fun PerfilScreen(
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    // ✅ Subir imagen a Firebase
+    fun subirFotoAFirebase(uri: Uri) {
+        if (user == null) return
+        scope.launch(Dispatchers.IO) {
+            try {
+                val ref = storage.reference.child("perfiles/${user.uid}_${UUID.randomUUID()}.jpg")
+                ref.putFile(uri).await()
+                val url = ref.downloadUrl.await().toString()
+
+                val userDoc = firestore.collection("usuario").document(user.uid)
+                val data = mapOf(
+                    "correo" to (user.email ?: ""),
+                    "nombre" to nombre,
+                    "rol" to rol,
+                    "fotoPerfil" to url
+                )
+                userDoc.set(data).await()
+
+                fotoFirebaseUrl = url // 🔥 Refresca inmediatamente
+                println("✅ Foto subida y actualizada en Firestore: $url")
+            } catch (e: Exception) {
+                println("❌ Error al subir foto: ${e.message}")
             }
         }
     }
@@ -72,6 +130,7 @@ fun PerfilScreen(
                 context.contentResolver.openInputStream(uri)?.use { stream ->
                     bitmap = BitmapFactory.decodeStream(stream)
                 }
+                subirFotoAFirebase(uri)
             }
         }
     }
@@ -86,6 +145,7 @@ fun PerfilScreen(
             context.contentResolver.openInputStream(it)?.use { stream ->
                 bitmap = BitmapFactory.decodeStream(stream)
             }
+            subirFotoAFirebase(it)
         }
     }
 
@@ -94,29 +154,24 @@ fun PerfilScreen(
             put(MediaStore.Images.Media.DISPLAY_NAME, "perfil_${System.currentTimeMillis()}.jpg")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
         }
-        return context.contentResolver.insert(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            contentValues
-        )!!
+        return context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)!!
     }
 
     fun solicitarPermisoCamara(onGranted: () -> Unit) {
         val permiso = Manifest.permission.CAMERA
-        if (ContextCompat.checkSelfPermission(context, permiso) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(context, permiso) == PackageManager.PERMISSION_GRANTED)
             onGranted()
-        } else {
+        else
             permissionLauncher.launch(arrayOf(permiso))
-        }
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     fun solicitarPermisoGaleria(onGranted: () -> Unit) {
         val permiso = Manifest.permission.READ_MEDIA_IMAGES
-        if (ContextCompat.checkSelfPermission(context, permiso) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(context, permiso) == PackageManager.PERMISSION_GRANTED)
             onGranted()
-        } else {
+        else
             permissionLauncher.launch(arrayOf(permiso))
-        }
     }
 
     // 🧩 UI
@@ -128,23 +183,23 @@ fun PerfilScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap!!.asImageBitmap(),
-                contentDescription = "Foto de perfil",
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
+        when {
+            fotoFirebaseUrl != null -> Image(
+                painter = rememberAsyncImagePainter(fotoFirebaseUrl),
+                contentDescription = "Foto de perfil Firebase",
+                modifier = Modifier.size(120.dp).clip(CircleShape)
             )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape),
+
+            bitmap != null -> Image(
+                bitmap = bitmap!!.asImageBitmap(),
+                contentDescription = "Foto local",
+                modifier = Modifier.size(120.dp).clip(CircleShape)
+            )
+
+            else -> Box(
+                modifier = Modifier.size(120.dp).clip(CircleShape),
                 contentAlignment = Alignment.Center
-            ) {
-                Text("👤", fontWeight = FontWeight.Bold)
-            }
+            ) { Text("👤", fontWeight = FontWeight.Bold) }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -160,32 +215,27 @@ fun PerfilScreen(
                     fotoUri = uri
                     cameraLauncher.launch(uri)
                 }
-            }) {
-                Text("📸 Cámara")
-            }
+            }) { Text("📸 Cámara") }
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Button(onClick = {
-                solicitarPermisoGaleria {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    solicitarPermisoGaleria { galleryLauncher.launch("image/*") }
+                } else {
                     galleryLauncher.launch("image/*")
                 }
-            }) {
-                Text("🖼️ Galería")
-            }
+            }) { Text("🖼️ Galería") }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // 🔹 Solo visible si el rol es ADMIN
         if (rol.lowercase() == "admin") {
             Button(
-                onClick = { onGestionAdmin() },
+                onClick = onGestionAdmin,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
-            ) {
-                Text("⚙️ Gestionar aplicación", fontWeight = FontWeight.Bold)
-            }
+            ) { Text("⚙️ Gestionar aplicación", fontWeight = FontWeight.Bold) }
 
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -200,20 +250,17 @@ fun PerfilScreen(
             onClick = onLogout,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Cerrar sesión")
-        }
+        ) { Text("Cerrar sesión") }
     }
 }
 
-// Guardar URI
+// 🧠 Persistencia local
 @SuppressLint("UseKtx")
 private fun saveProfileImageUri(context: Context, uri: Uri) {
     val prefs = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
     prefs.edit().putString("profile_image_uri", uri.toString()).apply()
 }
 
-// Cargar URI
 private fun loadProfileImageUri(context: Context): Uri? {
     val prefs = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
     val uriString = prefs.getString("profile_image_uri", null)

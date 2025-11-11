@@ -2,6 +2,7 @@ package com.example.vidasalud.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
@@ -9,37 +10,55 @@ import java.util.*
 class UsuarioRepository {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
+    private val storage = FirebaseStorage.getInstance()
 
     suspend fun registrarUsuario(correo: String, clave: String, nombre: String): Result<Unit> {
         return try {
-            // 1. Crear el usuario en Firebase Authentication
             val authResult = auth.createUserWithEmailAndPassword(correo, clave).await()
             val firebaseUser = authResult.user
 
             if (firebaseUser != null) {
-                // 2. Crear un objeto con los datos para Firestore
                 val nuevoUsuario = hashMapOf(
                     "nombre" to nombre,
                     "correo" to correo,
                     "clave" to clave,
                     "rol" to "cliente",
-                    "fechaRegistro" to getCurrentDate()
-
+                    "fechaRegistro" to getCurrentDate(),
+                    "fotoUrl" to null // 🔹 Campo vacío por compatibilidad
                 )
 
-                // 3. Guardar el objeto en la colección "users" de Firestore
-                // Usamos el UID del usuario de Auth como ID del documento
                 db.collection("usuario").document(firebaseUser.uid)
                     .set(nuevoUsuario)
-                    .await() // Espera a que la operación de guardado termine
+                    .await()
 
-                Result.success(Unit) // Devuelve éxito si todo fue bien
+                Result.success(Unit)
             } else {
-                // Esto es raro, pero es bueno manejarlo
                 Result.failure(Exception("No se pudo obtener el usuario de Firebase después de la creación."))
             }
         } catch (e: Exception) {
-            // Captura errores de Auth (ej: email ya existe) o de Firestore
+            Result.failure(e)
+        }
+    }
+
+    // 🔹 Nueva función: sube imagen y guarda URL en Firestore
+    suspend fun actualizarFotoPerfil(uriBytes: ByteArray): Result<String> {
+        return try {
+            val uid = auth.currentUser?.uid ?: return Result.failure(Exception("Usuario no autenticado"))
+            val ref = storage.reference.child("perfil/$uid.jpg")
+
+            // Subir imagen
+            ref.putBytes(uriBytes).await()
+
+            // Obtener URL de descarga
+            val downloadUrl = ref.downloadUrl.await().toString()
+
+            // Actualizar Firestore
+            db.collection("usuario").document(uid)
+                .update("fotoUrl", downloadUrl)
+                .await()
+
+            Result.success(downloadUrl)
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }
