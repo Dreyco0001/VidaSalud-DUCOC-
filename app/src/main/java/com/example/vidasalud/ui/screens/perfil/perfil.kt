@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -16,6 +17,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -25,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -60,6 +63,9 @@ fun PerfilScreen(
     val storage = FirebaseStorage.getInstance()
     val firestore = FirebaseFirestore.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
+
+    // Regex para validar URL de imagen
+    val regexImagen = Regex(""".*\.(jpg|jpeg|png|gif|webp)(\?.*)?$""", RegexOption.IGNORE_CASE)
 
     // 🔹 Escucha en tiempo real los datos del usuario
     LaunchedEffect(user?.uid) {
@@ -116,7 +122,7 @@ fun PerfilScreen(
 
     // 🔹 Guardar URL pública
     fun guardarUrlManual() {
-        if (user == null || urlManual.isBlank()) return
+        if (user == null || urlManual.isBlank() || !regexImagen.matches(urlManual)) return
         scope.launch(Dispatchers.IO) {
             try {
                 firestore.collection("usuario").document(user.uid)
@@ -126,7 +132,6 @@ fun PerfilScreen(
                 usarFotoRemota = true
                 println("🌐 URL pública guardada: $urlManual")
 
-                // Oculta campo una vez guardada
                 mostrarCampoUrl = false
                 urlManual = ""
             } catch (e: Exception) {
@@ -206,32 +211,35 @@ fun PerfilScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ✅ Prioridad visual
-        when {
-            usarFotoRemota && !fotoFirebaseUrl.isNullOrEmpty() -> Image(
-                painter = rememberAsyncImagePainter(fotoFirebaseUrl),
-                contentDescription = "Foto remota",
-                modifier = Modifier.size(120.dp).clip(CircleShape)
-            )
-            bitmap != null -> Image(
-                bitmap = bitmap!!.asImageBitmap(),
-                contentDescription = "Foto local",
-                modifier = Modifier.size(120.dp).clip(CircleShape)
-            )
-            else -> Box(
-                modifier = Modifier.size(120.dp).clip(CircleShape),
-                contentAlignment = Alignment.Center
-            ) { Text("👤", fontWeight = FontWeight.Bold) }
+        // Foto centrada en círculo
+        Box(
+            modifier = Modifier.size(120.dp).clip(CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                usarFotoRemota && !fotoFirebaseUrl.isNullOrEmpty() ->
+                    Image(
+                        painter = rememberAsyncImagePainter(fotoFirebaseUrl),
+                        contentDescription = "Foto remota",
+                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                    )
+                bitmap != null ->
+                    Image(
+                        bitmap = bitmap!!.asImageBitmap(),
+                        contentDescription = "Foto local",
+                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                    )
+                else -> Text("👤", fontWeight = FontWeight.Bold)
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
         Text("Bienvenido, $nombre", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         Text("Rol: ${rol.uppercase()}")
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 📸 Botones de cámara y galería
+        // Botones cámara/galería
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = {
                 solicitarPermisoCamara {
@@ -252,21 +260,15 @@ fun PerfilScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // 🌐 Botón para mostrar el campo URL
+        // Botón mostrar/ocultar campo URL
         Button(
             onClick = { mostrarCampoUrl = !mostrarCampoUrl },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
-        ) {
-            Text(if (mostrarCampoUrl) "Cancelar URL" else "Agregar URL Remota")
-        }
+        ) { Text(if (mostrarCampoUrl) "Cancelar URL" else "Agregar URL Remota") }
 
-        // 🌐 Campo visible con animación estable
-        AnimatedVisibility(
-            visible = mostrarCampoUrl,
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
+        // Campo URL fijo
+        if (mostrarCampoUrl) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -277,31 +279,38 @@ fun PerfilScreen(
                     value = urlManual,
                     onValueChange = { urlManual = it },
                     label = { Text("URL pública de imagen") },
-                    modifier = Modifier.fillMaxWidth()
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = urlManual.isNotEmpty() && !regexImagen.matches(urlManual),
+                    placeholder = { Text("https://...") }
                 )
 
                 Button(
-                    onClick = { guardarUrlManual() },
+                    onClick = {
+                        if (regexImagen.matches(urlManual)) guardarUrlManual()
+                        else Toast.makeText(context, "URL inválida, debe ser imagen", Toast.LENGTH_SHORT).show()
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
-                ) {
-                    Text("Guardar URL")
-                }
+                ) { Text("Guardar URL") }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 🔘 Selector local/remoto
+        // Selector local/remoto
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = usarFotoRemota, onCheckedChange = {
-                usarFotoRemota = it
-                if (user != null)
-                    firestore.collection("usuario").document(user.uid)
-                        .update("usarFotoRemota", it)
-            })
+            Checkbox(
+                checked = usarFotoRemota,
+                onCheckedChange = {
+                    usarFotoRemota = it
+                    if (user != null)
+                        firestore.collection("usuario").document(user.uid)
+                            .update("usarFotoRemota", it)
+                }
+            )
             Text(if (usarFotoRemota) "Usando foto remota" else "Usando foto local")
         }
 
@@ -312,29 +321,21 @@ fun PerfilScreen(
                 onClick = onGestionAdmin,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
-            ) {
-                Text("⚙️ Gestionar aplicación", fontWeight = FontWeight.Bold)
-            }
+            ) { Text("⚙️ Gestionar aplicación", fontWeight = FontWeight.Bold) }
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        Button(onClick = onVerCatalogo, modifier = Modifier.fillMaxWidth()) {
-            Text("Ir al catálogo")
-        }
-
+        Button(onClick = onVerCatalogo, modifier = Modifier.fillMaxWidth()) { Text("Ir al catálogo") }
         Spacer(modifier = Modifier.height(16.dp))
-
         Button(
             onClick = onLogout,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Cerrar sesión")
-        }
+        ) { Text("Cerrar sesión") }
     }
 }
 
-// 🧠 Persistencia local
+// Persistencia local
 @SuppressLint("UseKtx")
 private fun saveProfileImageUri(context: Context, uri: Uri) {
     val prefs = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)

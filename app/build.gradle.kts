@@ -75,6 +75,8 @@ dependencies {
 
     // 🔹 Corrutinas con Firebase Tasks
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+    implementation(libs.ui)
+    implementation(libs.androidx.foundation)
 
     // 🔹 Tests
     testImplementation(libs.junit)
