@@ -12,6 +12,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.vidasalud.viewmodel.RegistroViewModel
 
 @Composable
 fun RegistroScreen(
@@ -24,7 +25,7 @@ fun RegistroScreen(
     var confirmarClave by remember { mutableStateOf("") }
     var nombre by remember { mutableStateOf("") }
 
-    val viewModel: com.example.vidasalud.viewmodel.RegistroViewModel = viewModel()
+    val viewModel: RegistroViewModel = viewModel()
     val cargando by viewModel.cargando.collectAsState()
     val registroExitoso by viewModel.registroExitoso.collectAsState()
     val errorMensaje by viewModel.errorMensaje.collectAsState()
@@ -101,6 +102,18 @@ fun RegistroScreen(
 
         Button(
             onClick = {
+                if (nombre.isEmpty() || correo.isEmpty() || clave.isEmpty() || confirmarClave.isEmpty()) {
+                    Toast.makeText(context, "Todos los campos son obligatorios", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+                if (!correo.contains("@")) {
+                    Toast.makeText(context, "El correo electrónico no es válido", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+                if (clave != confirmarClave) {
+                    Toast.makeText(context, "Las contraseñas no coinciden", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
                 viewModel.registroUsuario(correo, clave, confirmarClave, nombre)
             },
             modifier = Modifier
