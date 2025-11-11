@@ -12,6 +12,9 @@ import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -50,30 +53,28 @@ fun PerfilScreen(
     var fotoUri by remember { mutableStateOf<Uri?>(loadProfileImageUri(context)) }
     var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var fotoFirebaseUrl by remember { mutableStateOf<String?>(null) }
+    var usarFotoRemota by remember { mutableStateOf(false) }
+    var urlManual by remember { mutableStateOf("") }
+    var mostrarCampoUrl by remember { mutableStateOf(false) }
 
     val storage = FirebaseStorage.getInstance()
     val firestore = FirebaseFirestore.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
 
-    // ✅ Escucha en tiempo real los cambios de la foto en Firestore
+    // 🔹 Escucha en tiempo real los datos del usuario
     LaunchedEffect(user?.uid) {
         user?.let {
             firestore.collection("usuario").document(it.uid)
-                .addSnapshotListener { snapshot, e ->
-                    if (e != null) {
-                        println("❌ Error escuchando Firestore: ${e.message}")
-                        return@addSnapshotListener
-                    }
-                    val url = snapshot?.getString("fotoPerfil")
-                    if (!url.isNullOrEmpty()) {
-                        fotoFirebaseUrl = url
-                        println("🔄 URL de foto actualizada desde Firestore: $url")
+                .addSnapshotListener { snapshot, _ ->
+                    snapshot?.let { doc ->
+                        fotoFirebaseUrl = doc.getString("fotoPerfil")
+                        usarFotoRemota = doc.getBoolean("usarFotoRemota") ?: false
                     }
                 }
         }
     }
 
-    // ✅ Carga local (persistente)
+    // 🔹 Carga imagen local
     LaunchedEffect(fotoUri) {
         fotoUri?.let {
             try {
@@ -86,7 +87,7 @@ fun PerfilScreen(
         }
     }
 
-    // ✅ Subir imagen a Firebase
+    // 🔹 Subir imagen a Firebase
     fun subirFotoAFirebase(uri: Uri) {
         if (user == null) return
         scope.launch(Dispatchers.IO) {
@@ -95,24 +96,46 @@ fun PerfilScreen(
                 ref.putFile(uri).await()
                 val url = ref.downloadUrl.await().toString()
 
-                val userDoc = firestore.collection("usuario").document(user.uid)
                 val data = mapOf(
                     "correo" to (user.email ?: ""),
                     "nombre" to nombre,
                     "rol" to rol,
-                    "fotoPerfil" to url
+                    "fotoPerfil" to url,
+                    "usarFotoRemota" to true
                 )
-                userDoc.set(data).await()
 
-                fotoFirebaseUrl = url // 🔥 Refresca inmediatamente
-                println("✅ Foto subida y actualizada en Firestore: $url")
+                firestore.collection("usuario").document(user.uid).set(data).await()
+                fotoFirebaseUrl = url
+                usarFotoRemota = true
+                println("✅ Foto subida a Firebase: $url")
             } catch (e: Exception) {
                 println("❌ Error al subir foto: ${e.message}")
             }
         }
     }
 
-    // ✅ Permisos
+    // 🔹 Guardar URL pública
+    fun guardarUrlManual() {
+        if (user == null || urlManual.isBlank()) return
+        scope.launch(Dispatchers.IO) {
+            try {
+                firestore.collection("usuario").document(user.uid)
+                    .update(mapOf("fotoPerfil" to urlManual, "usarFotoRemota" to true))
+                    .await()
+                fotoFirebaseUrl = urlManual
+                usarFotoRemota = true
+                println("🌐 URL pública guardada: $urlManual")
+
+                // Oculta campo una vez guardada
+                mostrarCampoUrl = false
+                urlManual = ""
+            } catch (e: Exception) {
+                println("❌ Error guardando URL manual: ${e.message}")
+            }
+        }
+    }
+
+    // 🔹 Permisos
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
@@ -183,19 +206,18 @@ fun PerfilScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
+        // ✅ Prioridad visual
         when {
-            fotoFirebaseUrl != null -> Image(
+            usarFotoRemota && !fotoFirebaseUrl.isNullOrEmpty() -> Image(
                 painter = rememberAsyncImagePainter(fotoFirebaseUrl),
-                contentDescription = "Foto de perfil Firebase",
+                contentDescription = "Foto remota",
                 modifier = Modifier.size(120.dp).clip(CircleShape)
             )
-
             bitmap != null -> Image(
                 bitmap = bitmap!!.asImageBitmap(),
                 contentDescription = "Foto local",
                 modifier = Modifier.size(120.dp).clip(CircleShape)
             )
-
             else -> Box(
                 modifier = Modifier.size(120.dp).clip(CircleShape),
                 contentAlignment = Alignment.Center
@@ -206,9 +228,11 @@ fun PerfilScreen(
         Text("Bienvenido, $nombre", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         Text("Rol: ${rol.uppercase()}")
+
         Spacer(modifier = Modifier.height(24.dp))
 
-        Row {
+        // 📸 Botones de cámara y galería
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = {
                 solicitarPermisoCamara {
                     val uri = crearFotoUri()
@@ -216,8 +240,6 @@ fun PerfilScreen(
                     cameraLauncher.launch(uri)
                 }
             }) { Text("📸 Cámara") }
-
-            Spacer(modifier = Modifier.width(16.dp))
 
             Button(onClick = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -228,15 +250,71 @@ fun PerfilScreen(
             }) { Text("🖼️ Galería") }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // 🌐 Botón para mostrar el campo URL
+        Button(
+            onClick = { mostrarCampoUrl = !mostrarCampoUrl },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
+        ) {
+            Text(if (mostrarCampoUrl) "Cancelar URL" else "Agregar URL Remota")
+        }
+
+        // 🌐 Campo visible con animación estable
+        AnimatedVisibility(
+            visible = mostrarCampoUrl,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                OutlinedTextField(
+                    value = urlManual,
+                    onValueChange = { urlManual = it },
+                    label = { Text("URL pública de imagen") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Button(
+                    onClick = { guardarUrlManual() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
+                ) {
+                    Text("Guardar URL")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 🔘 Selector local/remoto
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = usarFotoRemota, onCheckedChange = {
+                usarFotoRemota = it
+                if (user != null)
+                    firestore.collection("usuario").document(user.uid)
+                        .update("usarFotoRemota", it)
+            })
+            Text(if (usarFotoRemota) "Usando foto remota" else "Usando foto local")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         if (rol.lowercase() == "admin") {
             Button(
                 onClick = onGestionAdmin,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
-            ) { Text("⚙️ Gestionar aplicación", fontWeight = FontWeight.Bold) }
-
+            ) {
+                Text("⚙️ Gestionar aplicación", fontWeight = FontWeight.Bold)
+            }
             Spacer(modifier = Modifier.height(16.dp))
         }
 
@@ -250,7 +328,9 @@ fun PerfilScreen(
             onClick = onLogout,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.fillMaxWidth()
-        ) { Text("Cerrar sesión") }
+        ) {
+            Text("Cerrar sesión")
+        }
     }
 }
 
