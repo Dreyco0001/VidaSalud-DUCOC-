@@ -1,6 +1,7 @@
 package com.example.vidasalud.navigation
 
 import android.net.Uri
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -76,9 +77,19 @@ fun AppNavegacion() {
                     val nombreEncoded = Uri.encode(nombre)
                     val rolEncoded = Uri.encode(rol)
                     navController.navigate("catalogo/$nombreEncoded/$rolEncoded")
+                },
+                onGestionAdmin = {
+                    navController.navigate("gestion_planes")
                 }
             )
         }
+
+        // GESTION DE PLANES (CRUD)
+        composable("gestion_planes") {
+            // Aquí va la pantalla para administrar los planes
+            Text("Pantalla de Gestión de Planes")
+        }
+
 
         // CATALOGO
         composable(
