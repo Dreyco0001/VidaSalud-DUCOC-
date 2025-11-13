@@ -135,6 +135,7 @@ fun AppNavegacion() {
 
             CarritoScreen(
                 nombre = nombre,
+                rol = rol, // 👈 AHORA sí se pasa el rol real
                 onVerPerfil = { navController.navigate("perfil/$nombre/$rol") },
                 onLogout = {
                     navController.navigate("login") {
@@ -143,6 +144,7 @@ fun AppNavegacion() {
                     }
                 },
                 onVerDetallePlan = { plan -> println("Iniciando plan: ${plan.nombre}") },
+                onModificarPlan = { plan -> println("Modificando plan: ${plan.nombre}") }, // 🔹 opcional
                 onVolverAlCatalogo = { navController.popBackStack() }
             )
         }

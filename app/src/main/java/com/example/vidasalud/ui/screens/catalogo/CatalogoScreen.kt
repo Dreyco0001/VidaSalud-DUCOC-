@@ -118,12 +118,23 @@ fun CatalogoScreen(
                 Text("Nivel: Básico")
                 Text("Objetivo: Activar cuerpo rápidamente", color = Color.DarkGray)
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { /* acción de iniciar plan */ },
-                    modifier = Modifier.align(Alignment.End),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF03A9F4))
-                ) {
-                    Text("Iniciar Plan")
+
+                if (rol.lowercase() == "cliente") {
+                    Button(
+                        onClick = { /* acción de iniciar plan */ },
+                        modifier = Modifier.align(Alignment.End),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF03A9F4))
+                    ) {
+                        Text("Iniciar Plan")
+                    }
+                } else if (rol.lowercase() == "admin" || rol.lowercase() == "administrador") {
+                    Button(
+                        onClick = { /* acción de modificar plan */ },
+                        modifier = Modifier.align(Alignment.End),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFA000))
+                    ) {
+                        Text("Modificar Plan")
+                    }
                 }
             }
         }

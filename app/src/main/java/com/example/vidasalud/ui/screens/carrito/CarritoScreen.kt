@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,9 +29,11 @@ data class PlanEjercicio(
 @Composable
 fun CarritoScreen(
     nombre: String = "Usuario",
+    rol: String = "cliente", // 🔹 Nuevo parámetro para controlar el rol
     onVerPerfil: () -> Unit = {},
     onLogout: () -> Unit = {},
     onVerDetallePlan: (PlanEjercicio) -> Unit = {},
+    onModificarPlan: (PlanEjercicio) -> Unit = {}, // 🔹 Nuevo callback para admins
     onVolverAlCatalogo: () -> Unit = {}
 ) {
     val planes = remember {
@@ -112,14 +115,26 @@ fun CarritoScreen(
                         Text("Objetivo: ${plan.objetivo}", color = Color.DarkGray)
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Button(
-                            onClick = { onVerDetallePlan(plan) },
-                            modifier = Modifier.align(Alignment.End),
-                            colors = ButtonDefaults.buttonColors(containerColor = plan.color)
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = "Iniciar")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Iniciar Plan")
+                        if (rol.lowercase() == "cliente") {
+                            Button(
+                                onClick = { onVerDetallePlan(plan) },
+                                modifier = Modifier.align(Alignment.End),
+                                colors = ButtonDefaults.buttonColors(containerColor = plan.color)
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Iniciar")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Iniciar Plan")
+                            }
+                        } else if (rol.lowercase() == "admin" || rol.lowercase() == "administrador") {
+                            Button(
+                                onClick = { onModificarPlan(plan) },
+                                modifier = Modifier.align(Alignment.End),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFA000))
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = "Modificar")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Modificar Plan")
+                            }
                         }
                     }
                 }
