@@ -2,16 +2,18 @@ package com.example.vidasalud.ui.screens.gestionPlanes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.vidasalud.model.Plan
+import com.example.vidasalud.repository.PlanEjercicio
 import com.example.vidasalud.repository.PlanesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class GestionPlanesViewModel(private val repository: PlanesRepository = PlanesRepository()) : ViewModel() {
+class GestionPlanesViewModel(
+    private val repository: PlanesRepository = PlanesRepository()
+) : ViewModel() {
 
-    private val _planes = MutableStateFlow<List<Plan>>(emptyList())
-    val planes: StateFlow<List<Plan>> = _planes
+    private val _planes = MutableStateFlow<List<PlanEjercicio>>(emptyList())
+    val planes: StateFlow<List<PlanEjercicio>> = _planes
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -27,19 +29,12 @@ class GestionPlanesViewModel(private val repository: PlanesRepository = PlanesRe
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
+
             try {
-                _planes.value = repository.obtenerPlanes().map {
-                    Plan(
-                        id = it.id,
-                        nombre = it.nombre,
-                        duracion = it.duracion,
-                        nivel = it.nivel,
-                        objetivo = it.objetivo,
-                        imagenUrl = it.imagenUrl
-                    )
-                }
+                val result = repository.obtenerPlanes()
+                _planes.value = result ?: emptyList()  // 🔒 Nunca null
             } catch (e: Exception) {
-                _error.value = "Error al cargar planes: ${e.localizedMessage}"
+                _error.value = "Error al cargar planes: ${e.localizedMessage ?: "Error desconocido"}"
             } finally {
                 _isLoading.value = false
             }
@@ -56,15 +51,18 @@ class GestionPlanesViewModel(private val repository: PlanesRepository = PlanesRe
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
+
             try {
                 val result = repository.crearPlan(nombre, duracion, nivel, objetivo, imagenBytes)
+
                 if (result.isSuccess) {
-                    obtenerPlanes() // Refresh list
+                    obtenerPlanes()
                 } else {
-                    _error.value = "Error al crear plan: ${result.exceptionOrNull()?.localizedMessage}"
+                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "Error desconocido"
                 }
+
             } catch (e: Exception) {
-                _error.value = "Error al crear plan: ${e.localizedMessage}"
+                _error.value = "Error al crear plan: ${e.localizedMessage ?: "Error desconocido"}"
             } finally {
                 _isLoading.value = false
             }
@@ -82,15 +80,18 @@ class GestionPlanesViewModel(private val repository: PlanesRepository = PlanesRe
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
+
             try {
                 val result = repository.actualizarPlan(id, nombre, duracion, nivel, objetivo, imagenBytes)
+
                 if (result.isSuccess) {
-                    obtenerPlanes() // Refresh list
+                    obtenerPlanes()
                 } else {
-                    _error.value = "Error al actualizar plan: ${result.exceptionOrNull()?.localizedMessage}"
+                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "Error desconocido"
                 }
+
             } catch (e: Exception) {
-                _error.value = "Error al actualizar plan: ${e.localizedMessage}"
+                _error.value = "Error al actualizar plan: ${e.localizedMessage ?: "Error desconocido"}"
             } finally {
                 _isLoading.value = false
             }
@@ -101,15 +102,18 @@ class GestionPlanesViewModel(private val repository: PlanesRepository = PlanesRe
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
+
             try {
                 val result = repository.eliminarPlan(id)
+
                 if (result.isSuccess) {
-                    obtenerPlanes() // Refresh list
+                    obtenerPlanes()
                 } else {
-                    _error.value = "Error al eliminar plan: ${result.exceptionOrNull()?.localizedMessage}"
+                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "Error desconocido"
                 }
+
             } catch (e: Exception) {
-                _error.value = "Error al eliminar plan: ${e.localizedMessage}"
+                _error.value = "Error al eliminar plan: ${e.localizedMessage ?: "Error desconocido"}"
             } finally {
                 _isLoading.value = false
             }

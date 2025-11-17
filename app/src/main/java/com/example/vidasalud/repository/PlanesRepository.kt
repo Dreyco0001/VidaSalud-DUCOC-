@@ -61,7 +61,7 @@ class PlanesRepository {
             snapshot.documents.mapNotNull { doc ->
                 doc.toObject(PlanEjercicio::class.java)?.copy(id = doc.id)
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }
