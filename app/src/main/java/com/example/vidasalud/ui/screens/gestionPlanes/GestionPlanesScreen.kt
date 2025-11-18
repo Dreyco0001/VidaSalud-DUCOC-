@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.vidasalud.model.Plan
-import com.example.vidasalud.repository.PlanesRepository
 
 @Composable
 fun GestionPlanesScreen(
@@ -46,7 +45,6 @@ fun GestionPlanesScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // HEADER
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onVolver) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
@@ -63,13 +61,11 @@ fun GestionPlanesScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // CARGA / ERROR
             if (isLoading)
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
 
             error?.let { Text(it, color = Color.Red) }
 
-            // LISTA DE PLANES
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(planes) { plan ->
                     PlanItem(
@@ -82,7 +78,6 @@ fun GestionPlanesScreen(
         }
     }
 
-    // DIALOGO CREAR PLAN
     if (mostrarDialogoCrear) {
         DialogoPlan(
             titulo = "Crear Plan",
@@ -94,14 +89,13 @@ fun GestionPlanesScreen(
                     duracion,
                     nivel,
                     objetivo,
-                    imagenUrl?.toByteArray() // si quieres bytes, ajustar aquí
+                    imagenUrl // <-- URL directa, sin bytes
                 )
                 mostrarDialogoCrear = false
             }
         )
     }
 
-    // DIALOGO EDITAR PLAN
     planAEditar?.let { plan ->
         DialogoPlan(
             titulo = "Editar Plan",
@@ -114,7 +108,7 @@ fun GestionPlanesScreen(
                     duracion,
                     nivel,
                     objetivo,
-                    imagenUrl?.toByteArray()
+                    imagenUrl // <-- URL directa
                 )
                 planAEditar = null
             }
@@ -168,7 +162,7 @@ fun DialogoPlan(
     titulo: String,
     plan: Plan? = null,
     onDismiss: () -> Unit,
-    onGuardar: (String, Int, String, String, String?) -> Unit // <-- agregamos imagenUrl
+    onGuardar: (String, Int, String, String, String?) -> Unit
 ) {
     var nombre by remember { mutableStateOf(plan?.nombre ?: "") }
     var duracion by remember { mutableStateOf(plan?.duracion?.toString() ?: "") }
@@ -186,12 +180,16 @@ fun DialogoPlan(
                     duracion.toIntOrNull() ?: 0,
                     nivel,
                     objetivo,
-                    imagenUrl.ifBlank { null }
+                    imagenUrl.ifBlank { null } // <-- URL o null
                 )
-            }) { Text("Guardar") }
+            }) {
+                Text("Guardar")
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

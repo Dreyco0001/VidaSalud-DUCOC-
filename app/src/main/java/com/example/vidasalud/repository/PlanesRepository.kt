@@ -2,39 +2,29 @@ package com.example.vidasalud.repository
 
 import com.example.vidasalud.model.Plan
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
-import java.util.UUID
 
 class PlanesRepository {
 
     private val db = FirebaseFirestore.getInstance()
-    private val storage = FirebaseStorage.getInstance()
     private val planesCollection = db.collection("planes")
 
-    // CREAR PLAN
+    // CREAR PLAN (con URL directa)
     suspend fun crearPlan(
         nombre: String,
         duracion: Int,
         nivel: String,
         objetivo: String,
-        imagenBytes: ByteArray? = null
+        imagenUrl: String? = null
     ): Result<Unit> {
         return try {
-            var imageUrl = ""
-
-            if (imagenBytes != null) {
-                val imagenRef = storage.reference.child("planes/${UUID.randomUUID()}.jpg")
-                imagenRef.putBytes(imagenBytes).await()
-                imageUrl = imagenRef.downloadUrl.await().toString()
-            }
 
             val nuevoPlan = hashMapOf(
                 "nombre" to nombre,
                 "duracion" to duracion,
                 "nivel" to nivel,
                 "objetivo" to objetivo,
-                "imagenUrl" to imageUrl
+                "imagenUrl" to (imagenUrl ?: "")
             )
 
             planesCollection.add(nuevoPlan).await()
@@ -45,7 +35,7 @@ class PlanesRepository {
         }
     }
 
-    // OBTENER LISTA (UNA SOLA VEZ)
+    // OBTENER PLANES
     suspend fun obtenerPlanes(): List<Plan> {
         return try {
             val snapshot = planesCollection.get().await()
@@ -57,7 +47,7 @@ class PlanesRepository {
         }
     }
 
-    // ESCUCHAR EN TIEMPO REAL
+    // ESCUCHAR CAMBIOS REALTIME
     fun escucharPlanes(onChange: (List<Plan>) -> Unit) {
         planesCollection.addSnapshotListener { snapshot, error ->
             if (error != null || snapshot == null) {
@@ -80,7 +70,7 @@ class PlanesRepository {
         duracion: Int? = null,
         nivel: String? = null,
         objetivo: String? = null,
-        imagenBytes: ByteArray? = null
+        imagenUrl: String? = null
     ): Result<Unit> {
 
         return try {
@@ -90,13 +80,7 @@ class PlanesRepository {
             duracion?.let { actualizaciones["duracion"] = it }
             nivel?.let { actualizaciones["nivel"] = it }
             objetivo?.let { actualizaciones["objetivo"] = it }
-
-            if (imagenBytes != null) {
-                val imagenRef = storage.reference.child("planes/${UUID.randomUUID()}.jpg")
-                imagenRef.putBytes(imagenBytes).await()
-                val url = imagenRef.downloadUrl.await().toString()
-                actualizaciones["imagenUrl"] = url
-            }
+            imagenUrl?.let { actualizaciones["imagenUrl"] = it }
 
             planesCollection.document(id).update(actualizaciones).await()
             Result.success(Unit)

@@ -32,9 +32,11 @@ class GestionPlanesViewModel(
 
             try {
                 val result = repository.obtenerPlanes()
-                _planes.value = result // nunca null
+                _planes.value = result.ifEmpty { emptyList() }
+
             } catch (e: Exception) {
-                _error.value = "Error al cargar planes: ${e.localizedMessage ?: "Error desconocido"}"
+                _error.value = "Error cargando planes: ${e.localizedMessage}"
+                _planes.value = emptyList()
             } finally {
                 _isLoading.value = false
             }
@@ -46,23 +48,23 @@ class GestionPlanesViewModel(
         duracion: Int,
         nivel: String,
         objetivo: String,
-        imagenBytes: ByteArray? = null
+        imagenUrl: String? = null
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val result = repository.crearPlan(nombre, duracion, nivel, objetivo, imagenBytes)
+                val result = repository.crearPlan(nombre, duracion, nivel, objetivo, imagenUrl)
 
                 if (result.isSuccess) {
                     obtenerPlanes()
                 } else {
-                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "Error desconocido"
+                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "No se pudo crear el plan"
                 }
 
             } catch (e: Exception) {
-                _error.value = "Error al crear plan: ${e.localizedMessage ?: "Error desconocido"}"
+                _error.value = "Error creando plan: ${e.localizedMessage}"
             } finally {
                 _isLoading.value = false
             }
@@ -75,23 +77,23 @@ class GestionPlanesViewModel(
         duracion: Int? = null,
         nivel: String? = null,
         objetivo: String? = null,
-        imagenBytes: ByteArray? = null
+        imagenUrl: String? = null
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val result = repository.actualizarPlan(id, nombre, duracion, nivel, objetivo, imagenBytes)
+                val result = repository.actualizarPlan(id, nombre, duracion, nivel, objetivo, imagenUrl)
 
                 if (result.isSuccess) {
                     obtenerPlanes()
                 } else {
-                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "Error desconocido"
+                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "No se pudo actualizar el plan"
                 }
 
             } catch (e: Exception) {
-                _error.value = "Error al actualizar plan: ${e.localizedMessage ?: "Error desconocido"}"
+                _error.value = "Error actualizando plan: ${e.localizedMessage}"
             } finally {
                 _isLoading.value = false
             }
@@ -109,11 +111,11 @@ class GestionPlanesViewModel(
                 if (result.isSuccess) {
                     obtenerPlanes()
                 } else {
-                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "Error desconocido"
+                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "No se pudo eliminar el plan"
                 }
 
             } catch (e: Exception) {
-                _error.value = "Error al eliminar plan: ${e.localizedMessage ?: "Error desconocido"}"
+                _error.value = "Error eliminando plan: ${e.localizedMessage}"
             } finally {
                 _isLoading.value = false
             }
