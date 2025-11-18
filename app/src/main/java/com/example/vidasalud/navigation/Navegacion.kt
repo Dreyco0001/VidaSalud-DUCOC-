@@ -13,11 +13,12 @@ import androidx.navigation.navArgument
 import com.example.vidasalud.ui.screens.carrito.CarritoScreen
 import com.example.vidasalud.ui.screens.catalogo.CatalogoScreen
 import com.example.vidasalud.ui.screens.gestionPlanes.GestionPlanesScreen
+import com.example.vidasalud.ui.screens.gestionUsuarios.GestionUsuariosScreen
 import com.example.vidasalud.ui.screens.login.LoginScreen
 import com.example.vidasalud.ui.screens.pago.PagoConfirmacionScreen
 import com.example.vidasalud.ui.screens.perfil.PerfilScreen
 import com.example.vidasalud.ui.screens.registro.RegistroScreen
-import com.example.vidasalud.ui.screens.gestionPlanes.GestionPlanesViewModel
+import com.example.vidasalud.viewmodel.GestionPlanesViewModel
 
 @Composable
 fun AppNavegacion() {
@@ -78,9 +79,13 @@ fun AppNavegacion() {
                 },
                 onGestionAdmin = {
                     navController.navigate("gestion_planes/${Uri.encode(nombre)}/${Uri.encode(rol)}")
+                },
+                onGestionUsuarios = {   // 🔥 ESTA ES LA PARTE QUE FALTABA
+                    navController.navigate("gestion_usuarios/${Uri.encode(nombre)}/${Uri.encode(rol)}")
                 }
             )
         }
+
 
         // GESTIÓN DE PLANES
         composable(
@@ -170,6 +175,34 @@ fun AppNavegacion() {
                 onVolverAlCatalogo = { navController.popBackStack() }
             )
         }
+
+        // GESTIÓN DE USUARIOS
+        composable(
+            route = "gestion_usuarios/{nombre}/{rol}",
+            arguments = listOf(
+                navArgument("nombre") { type = NavType.StringType },
+                navArgument("rol") { type = NavType.StringType }
+            )
+        ) { entry ->
+
+            val nombre = entry.arguments?.getString("nombre") ?: ""
+            val rol = entry.arguments?.getString("rol") ?: "cliente"
+
+            // Validación de admin igual que en gestión de planes
+            when {
+                nombre.isBlank() ->
+                    Text("Error: parámetro 'nombre' no recibido.")
+
+                rol != "admin" ->
+                    Text("Acceso denegado — Solo admin puede entrar.")
+
+                else ->
+                    GestionUsuariosScreen(
+                        onVolver = { navController.popBackStack() }
+                    )
+            }
+        }
+
 
         // PAGO
         composable("pago") {

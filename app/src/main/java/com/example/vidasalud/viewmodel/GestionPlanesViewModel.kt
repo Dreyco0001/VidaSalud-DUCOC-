@@ -1,4 +1,4 @@
-package com.example.vidasalud.ui.screens.gestionPlanes
+package com.example.vidasalud.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

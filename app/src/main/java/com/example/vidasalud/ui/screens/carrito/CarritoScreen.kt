@@ -19,7 +19,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.example.vidasalud.model.Plan
-import com.example.vidasalud.ui.screens.gestionPlanes.GestionPlanesViewModel
+import com.example.vidasalud.viewmodel.GestionPlanesViewModel
 
 @Composable
 fun CarritoScreen(
