@@ -17,12 +17,15 @@ import com.example.vidasalud.ui.screens.login.LoginScreen
 import com.example.vidasalud.ui.screens.pago.PagoConfirmacionScreen
 import com.example.vidasalud.ui.screens.perfil.PerfilScreen
 import com.example.vidasalud.ui.screens.registro.RegistroScreen
-import com.example.vidasalud.viewmodel.CarritoViewModel
+import com.example.vidasalud.ui.screens.gestionPlanes.GestionPlanesViewModel
 
 @Composable
 fun AppNavegacion() {
+
     val navController = rememberNavController()
-    val carritoViewModel: CarritoViewModel = viewModel()
+
+    // 👉 ESTE es ahora el único ViewModel global
+    val planesViewModel: GestionPlanesViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -34,9 +37,9 @@ fun AppNavegacion() {
             LoginScreen(
                 onRegisterClick = { navController.navigate("register") },
                 onLoginSuccess = { user ->
-                    val nombreEncoded = Uri.encode(user.nombre)
-                    val rolEncoded = Uri.encode(user.rol)
-                    navController.navigate("perfil/$nombreEncoded/$rolEncoded") {
+                    val nombre = Uri.encode(user.nombre)
+                    val rol = Uri.encode(user.rol)
+                    navController.navigate("perfil/$nombre/$rol") {
                         popUpTo("login") { inclusive = true }
                     }
                 }
@@ -58,31 +61,28 @@ fun AppNavegacion() {
                 navArgument("nombre") { type = NavType.StringType },
                 navArgument("rol") { type = NavType.StringType }
             )
-        ) { backStackEntry ->
-            val nombre = backStackEntry.arguments?.getString("nombre") ?: "Usuario"
-            val rol = backStackEntry.arguments?.getString("rol") ?: "cliente"
+        ) { entry ->
+            val nombre = entry.arguments?.getString("nombre") ?: "Usuario"
+            val rol = entry.arguments?.getString("rol") ?: "cliente"
 
             PerfilScreen(
                 nombre = nombre,
                 rol = rol,
                 onLogout = {
-                    navController.navigate("login") { popUpTo(0) { inclusive = true } }
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
                 },
                 onVerCatalogo = {
-                    val nombreEncoded = Uri.encode(nombre)
-                    val rolEncoded = Uri.encode(rol)
-                    navController.navigate("catalogo/$nombreEncoded/$rolEncoded")
+                    navController.navigate("catalogo/${Uri.encode(nombre)}/${Uri.encode(rol)}")
                 },
                 onGestionAdmin = {
-                    // ✅ Aseguramos que la ruta tenga parámetros
-                    val nombreEncoded = Uri.encode(nombre)
-                    val rolEncoded = Uri.encode(rol)
-                    navController.navigate("gestion_planes/$nombreEncoded/$rolEncoded")
+                    navController.navigate("gestion_planes/${Uri.encode(nombre)}/${Uri.encode(rol)}")
                 }
             )
         }
 
-        // GESTION DE PLANES
+        // GESTIÓN DE PLANES
         composable(
             route = "gestion_planes/{nombre}/{rol}",
             arguments = listOf(
@@ -90,18 +90,23 @@ fun AppNavegacion() {
                 navArgument("rol") { type = NavType.StringType }
             )
         ) { entry ->
+
             val nombre = rememberSaveable { entry.arguments?.getString("nombre") ?: "" }
             val rol = rememberSaveable { entry.arguments?.getString("rol") ?: "cliente" }
 
             when {
-                nombre.isBlank() -> Text("Error: parámetro 'nombre' no recibido.")
-                rol != "admin" -> Text("Acceso denegado — Solo admin puede entrar.")
-                else -> GestionPlanesScreen(
-                    onVolver = { navController.popBackStack() } // 👈 callback para volver
-                )
+                nombre.isBlank() ->
+                    Text("Error: parámetro 'nombre' no recibido.")
+
+                rol != "admin" ->
+                    Text("Acceso denegado — Solo admin puede entrar.")
+
+                else ->
+                    GestionPlanesScreen(
+                        onVolver = { navController.popBackStack() }
+                    )
             }
         }
-
 
         // CATALOGO
         composable(
@@ -110,46 +115,58 @@ fun AppNavegacion() {
                 navArgument("nombre") { type = NavType.StringType },
                 navArgument("rol") { type = NavType.StringType }
             )
-        ) { backStackEntry ->
-            val nombre = backStackEntry.arguments?.getString("nombre") ?: "Cliente"
-            val rol = backStackEntry.arguments?.getString("rol") ?: "cliente"
+        ) { entry ->
+
+            val nombre = entry.arguments?.getString("nombre") ?: "Cliente"
+            val rol = entry.arguments?.getString("rol") ?: "cliente"
 
             CatalogoScreen(
                 nombre = nombre,
                 rol = rol,
                 onVerPerfil = { navController.navigate("perfil/$nombre/$rol") },
-                onLogout = { navController.navigate("login") { popUpTo(0) { inclusive = true } } },
+                onLogout = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 onVerCarrito = {
-                    val nombreEncoded = Uri.encode(nombre)
-                    val rolEncoded = Uri.encode(rol)
-                    navController.navigate("carrito/$nombreEncoded/$rolEncoded")
+                    navController.navigate("carrito/${Uri.encode(nombre)}/${Uri.encode(rol)}")
                 }
             )
         }
 
-        // CARRITO
+        // CARRITO — AHORA USA GestionPlanesViewModel
         composable(
             route = "carrito/{nombre}/{rol}",
             arguments = listOf(
-                navArgument("nombre") { type = NavType.StringType; defaultValue = "Usuario" },
-                navArgument("rol") { type = NavType.StringType; defaultValue = "cliente" }
+                navArgument("nombre") { type = NavType.StringType },
+                navArgument("rol") { type = NavType.StringType }
             )
-        ) { backStackEntry ->
-            val nombre = backStackEntry.arguments?.getString("nombre") ?: "Usuario"
-            val rol = backStackEntry.arguments?.getString("rol") ?: "cliente"
+        ) { entry ->
+
+            val nombre = entry.arguments?.getString("nombre") ?: "Usuario"
+            val rol = entry.arguments?.getString("rol") ?: "cliente"
 
             CarritoScreen(
                 nombre = nombre,
                 rol = rol,
+
+                // 👉 reemplazo total: ahora recibe tu VIEWMODEL PRINCIPAL
+                viewModel = planesViewModel,
+
                 onVerPerfil = { navController.navigate("perfil/$nombre/$rol") },
                 onLogout = {
                     navController.navigate("login") {
-                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                         launchSingleTop = true
                     }
                 },
-                onVerDetallePlan = { plan -> println("Iniciando plan: ${plan.nombre}") },
-                onModificarPlan = { plan -> println("Modificando plan: ${plan.nombre}") },
+                onVerDetallePlan = { plan ->
+                    println("Detalle plan: ${plan.nombre}")
+                },
+                onModificarPlan = { plan ->
+                    println("Modificar plan: ${plan.nombre}")
+                },
                 onVolverAlCatalogo = { navController.popBackStack() }
             )
         }
