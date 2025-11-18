@@ -2,7 +2,7 @@ package com.example.vidasalud.ui.screens.gestionPlanes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.vidasalud.repository.PlanEjercicio
+import com.example.vidasalud.model.Plan
 import com.example.vidasalud.repository.PlanesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,8 +12,8 @@ class GestionPlanesViewModel(
     private val repository: PlanesRepository = PlanesRepository()
 ) : ViewModel() {
 
-    private val _planes = MutableStateFlow<List<PlanEjercicio>>(emptyList())
-    val planes: StateFlow<List<PlanEjercicio>> = _planes
+    private val _planes = MutableStateFlow<List<Plan>>(emptyList())
+    val planes: StateFlow<List<Plan>> = _planes
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -32,7 +32,7 @@ class GestionPlanesViewModel(
 
             try {
                 val result = repository.obtenerPlanes()
-                _planes.value = result ?: emptyList()  // 🔒 Nunca null
+                _planes.value = result // nunca null
             } catch (e: Exception) {
                 _error.value = "Error al cargar planes: ${e.localizedMessage ?: "Error desconocido"}"
             } finally {

@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -19,7 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.vidasalud.repository.PlanEjercicio
+import com.example.vidasalud.model.Plan
+import com.example.vidasalud.repository.PlanesRepository
 
 @Composable
 fun GestionPlanesScreen(
@@ -31,7 +31,7 @@ fun GestionPlanesScreen(
     val error by viewModel.error.collectAsState()
 
     var mostrarDialogoCrear by remember { mutableStateOf(false) }
-    var planAEditar by remember { mutableStateOf<PlanEjercicio?>(null) }
+    var planAEditar by remember { mutableStateOf<Plan?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -46,12 +46,8 @@ fun GestionPlanesScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // 🔹 HEADER SIMPLE CON BOTÓN VOLVER Y CONTADOR
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            // HEADER
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onVolver) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                 }
@@ -61,20 +57,19 @@ fun GestionPlanesScreen(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        "${planes.size} plan(es) cargado(s)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
+                    Text("${planes.size} plan(es) cargado(s)", color = Color.Gray)
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            // CARGA / ERROR
+            if (isLoading)
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
 
-            error?.let { Text(text = it, color = Color.Red, modifier = Modifier.padding(8.dp)) }
+            error?.let { Text(it, color = Color.Red) }
 
+            // LISTA DE PLANES
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(planes) { plan ->
                     PlanItem(
@@ -87,37 +82,39 @@ fun GestionPlanesScreen(
         }
     }
 
-    // 🔹 CREAR PLAN
+    // DIALOGO CREAR PLAN
     if (mostrarDialogoCrear) {
         DialogoPlan(
             titulo = "Crear Plan",
             plan = null,
             onDismiss = { mostrarDialogoCrear = false },
-            onGuardar = { nombre, duracion, nivel, objetivo ->
+            onGuardar = { nombre, duracion, nivel, objetivo, imagenUrl ->
                 viewModel.crearPlan(
-                    nombre = nombre,
-                    duracion = duracion,
-                    nivel = nivel,
-                    objetivo = objetivo
+                    nombre,
+                    duracion,
+                    nivel,
+                    objetivo,
+                    imagenUrl?.toByteArray() // si quieres bytes, ajustar aquí
                 )
                 mostrarDialogoCrear = false
             }
         )
     }
 
-    // 🔹 EDITAR PLAN
+    // DIALOGO EDITAR PLAN
     planAEditar?.let { plan ->
         DialogoPlan(
             titulo = "Editar Plan",
             plan = plan,
             onDismiss = { planAEditar = null },
-            onGuardar = { nombre, duracion, nivel, objetivo ->
+            onGuardar = { nombre, duracion, nivel, objetivo, imagenUrl ->
                 viewModel.actualizarPlan(
-                    id = plan.id,
-                    nombre = nombre,
-                    duracion = duracion,
-                    nivel = nivel,
-                    objetivo = objetivo
+                    plan.id,
+                    nombre,
+                    duracion,
+                    nivel,
+                    objetivo,
+                    imagenUrl?.toByteArray()
                 )
                 planAEditar = null
             }
@@ -127,7 +124,7 @@ fun GestionPlanesScreen(
 
 @Composable
 fun PlanItem(
-    plan: PlanEjercicio,
+    plan: Plan,
     onEditar: () -> Unit,
     onEliminar: () -> Unit
 ) {
@@ -142,7 +139,7 @@ fun PlanItem(
             if (plan.imagenUrl.isNotEmpty()) {
                 AsyncImage(
                     model = plan.imagenUrl,
-                    contentDescription = "Imagen del plan",
+                    contentDescription = null,
                     modifier = Modifier.size(70.dp),
                     contentScale = ContentScale.Crop
                 )
@@ -157,10 +154,10 @@ fun PlanItem(
             }
 
             IconButton(onClick = onEditar) {
-                Icon(Icons.Default.Edit, contentDescription = "Editar")
+                Icon(Icons.Default.Edit, contentDescription = null)
             }
             IconButton(onClick = onEliminar) {
-                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red)
+                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
             }
         }
     }
@@ -169,41 +166,40 @@ fun PlanItem(
 @Composable
 fun DialogoPlan(
     titulo: String,
-    plan: PlanEjercicio?,
+    plan: Plan? = null,
     onDismiss: () -> Unit,
-    onGuardar: (String, Int, String, String) -> Unit
+    onGuardar: (String, Int, String, String, String?) -> Unit // <-- agregamos imagenUrl
 ) {
     var nombre by remember { mutableStateOf(plan?.nombre ?: "") }
     var duracion by remember { mutableStateOf(plan?.duracion?.toString() ?: "") }
     var nivel by remember { mutableStateOf(plan?.nivel ?: "") }
     var objetivo by remember { mutableStateOf(plan?.objetivo ?: "") }
+    var imagenUrl by remember { mutableStateOf(plan?.imagenUrl ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        title = { Text(titulo) },
         confirmButton = {
             Button(onClick = {
                 onGuardar(
                     nombre,
                     duracion.toIntOrNull() ?: 0,
                     nivel,
-                    objetivo
+                    objetivo,
+                    imagenUrl.ifBlank { null }
                 )
-            }) {
-                Text("Guardar")
-            }
+            }) { Text("Guardar") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
         },
-        title = { Text(titulo) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") })
                 OutlinedTextField(value = duracion, onValueChange = { duracion = it }, label = { Text("Duración (min)") })
                 OutlinedTextField(value = nivel, onValueChange = { nivel = it }, label = { Text("Nivel") })
                 OutlinedTextField(value = objetivo, onValueChange = { objetivo = it }, label = { Text("Objetivo") })
+                OutlinedTextField(value = imagenUrl, onValueChange = { imagenUrl = it }, label = { Text("URL de imagen (opcional)") })
             }
         }
     )
