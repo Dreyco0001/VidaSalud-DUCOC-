@@ -8,40 +8,44 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class UsuarioRepository {
+
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val storage = FirebaseStorage.getInstance()
 
-    // REGISTRO (ORIGINAL)
+    // --------------------------------------------------------------------
+    // REGISTRO ORIGINAL (Auth + Firestore)
+    // --------------------------------------------------------------------
     suspend fun registrarUsuario(correo: String, clave: String, nombre: String): Result<Unit> {
         return try {
             val authResult = auth.createUserWithEmailAndPassword(correo, clave).await()
-            val firebaseUser = authResult.user
+            val firebaseUser = authResult.user ?: return Result.failure(Exception("Usuario Firebase nulo."))
 
-            if (firebaseUser != null) {
-                val nuevoUsuario = hashMapOf(
-                    "nombre" to nombre,
-                    "correo" to correo,
-                    "clave" to clave,
-                    "rol" to "cliente",
-                    "fechaRegistro" to getCurrentDate(),
-                    "fotoUrl" to null
-                )
+            val nuevoUsuario = hashMapOf(
+                "uid" to firebaseUser.uid,
+                "nombre" to nombre,
+                "correo" to correo,
+                "clave" to clave,
+                "rol" to "cliente",
+                "fechaRegistro" to getCurrentDate(),
+                "fotoUrl" to null
+            )
 
-                db.collection("usuario").document(firebaseUser.uid)
-                    .set(nuevoUsuario)
-                    .await()
+            db.collection("usuario")
+                .document(firebaseUser.uid)
+                .set(nuevoUsuario)
+                .await()
 
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("No se pudo obtener el usuario de Firebase después de la creación."))
-            }
+            Result.success(Unit)
+
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // SUBIR FOTO PERFIL (ORIGINAL)
+    // --------------------------------------------------------------------
+    // SUBIR FOTO PERFIL
+    // --------------------------------------------------------------------
     suspend fun actualizarFotoPerfil(uriBytes: ByteArray): Result<String> {
         return try {
             val uid = auth.currentUser?.uid ?: return Result.failure(Exception("Usuario no autenticado"))
@@ -55,12 +59,15 @@ class UsuarioRepository {
                 .await()
 
             Result.success(downloadUrl)
+
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // CREAR USUARIO (NUEVO)
+    // --------------------------------------------------------------------
+    // CREAR USUARIO (ADMIN)
+    // --------------------------------------------------------------------
     suspend fun crearUsuario(
         correo: String,
         clave: String,
@@ -69,6 +76,7 @@ class UsuarioRepository {
         fotoUrl: String? = null
     ): Result<Unit> {
         return try {
+            // evitar duplicados
             val existing = db.collection("usuario")
                 .whereEqualTo("correo", correo)
                 .get()
@@ -78,7 +86,9 @@ class UsuarioRepository {
                 return Result.failure(Exception("Ya existe un usuario con ese correo"))
             }
 
+            // documento temporal sin UID
             val nuevo = hashMapOf(
+                "uid" to "",
                 "correo" to correo,
                 "clave" to clave,
                 "nombre" to nombre,
@@ -86,14 +96,23 @@ class UsuarioRepository {
                 "fotoUrl" to fotoUrl
             )
 
-            db.collection("usuario").add(nuevo).await()
+            val docRef = db.collection("usuario").add(nuevo).await()
+
+            // actualizar UID en el documento real
+            db.collection("usuario").document(docRef.id)
+                .update("uid", docRef.id)
+                .await()
+
             Result.success(Unit)
+
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // ACTUALIZAR USUARIO POR CORREO (NUEVO)
+    // --------------------------------------------------------------------
+    // ACTUALIZAR USUARIO POR CORREO
+    // --------------------------------------------------------------------
     suspend fun actualizarUsuarioPorCorreo(
         correo: String,
         nombre: String? = null,
@@ -112,6 +131,7 @@ class UsuarioRepository {
             }
 
             val docId = query.documents.first().id
+
             val updates = mutableMapOf<String, Any?>()
 
             nombre?.let { updates["nombre"] = it }
@@ -127,22 +147,36 @@ class UsuarioRepository {
             }
 
             Result.success(Unit)
+
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // OBTENER USUARIOS (NUEVO)
+    // --------------------------------------------------------------------
+    // OBTENER USUARIOS (COMPATIBLE CON VIEWMODEL)
+    // --------------------------------------------------------------------
     suspend fun obtenerUsuarios(): Result<List<Map<String, Any>>> {
         return try {
             val query = db.collection("usuario").get().await()
-            Result.success(query.documents.map { it.data ?: emptyMap() })
+
+            val lista = query.documents.map { doc ->
+                val data = doc.data ?: emptyMap<String, Any>()
+
+                // MEGA IMPORTANTE: incluir UID real SIEMPRE
+                data + ("uid" to doc.id)
+            }
+
+            Result.success(lista)
+
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // ACTUALIZAR ROL (NUEVO)
+    // --------------------------------------------------------------------
+    // ACTUALIZAR SOLO ROL POR UID
+    // --------------------------------------------------------------------
     suspend fun actualizarRol(uid: String, nuevoRol: String): Result<Unit> {
         return try {
             db.collection("usuario").document(uid)
@@ -150,22 +184,32 @@ class UsuarioRepository {
                 .await()
 
             Result.success(Unit)
+
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // ELIMINAR USUARIO (NUEVO)
+    // --------------------------------------------------------------------
+    // ELIMINAR USUARIO POR UID
+    // --------------------------------------------------------------------
     suspend fun eliminarUsuario(uid: String): Result<Unit> {
         return try {
-            db.collection("usuario").document(uid).delete().await()
+            db.collection("usuario")
+                .document(uid)
+                .delete()
+                .await()
+
             Result.success(Unit)
+
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // FECHA (ORIGINAL)
+    // --------------------------------------------------------------------
+    // FECHA
+    // --------------------------------------------------------------------
     private fun getCurrentDate(): String {
         val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
         return sdf.format(Date())

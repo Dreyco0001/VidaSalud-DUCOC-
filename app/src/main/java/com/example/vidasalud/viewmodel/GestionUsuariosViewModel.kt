@@ -31,23 +31,32 @@ class GestionUsuariosViewModel(
             _error.value = null
 
             try {
-                val result = repository.obtenerUsuarios()  // Result<List<Map<String, Any>>>
+                val result = repository.obtenerUsuarios()
 
                 if (result.isSuccess) {
+
                     val listaMap = result.getOrNull() ?: emptyList()
 
-                    // Convertir Map → Usuario
                     val listaUsuarios = listaMap.map { data ->
+
+                        // 🔥 Conversiones 100% seguras sin crashear
+                        val correo = data["correo"]?.toString() ?: ""
+                        val nombre = data["nombre"]?.toString() ?: ""
+                        val clave = data["clave"]?.toString() ?: ""
+                        val rol = data["rol"]?.toString() ?: ""
+                        val fotoUrl = data["fotoUrl"]?.toString()
+
                         Usuario(
-                            correo = data["correo"] as? String ?: "",
-                            nombre = data["nombre"] as? String ?: "",
-                            clave = data["clave"] as? String ?: "",
-                            rol = data["rol"] as? String ?: "",
-                            fotoUrl = data["fotoUrl"] as? String
+                            correo = correo,
+                            nombre = nombre,
+                            clave = clave,
+                            rol = rol,
+                            fotoUrl = fotoUrl
                         )
                     }
 
                     _usuarios.value = listaUsuarios
+
                 } else {
                     _error.value = "Error cargando usuarios"
                 }
@@ -83,8 +92,7 @@ class GestionUsuariosViewModel(
                 if (result.isSuccess) {
                     obtenerUsuarios()
                 } else {
-                    _error.value =
-                        result.exceptionOrNull()?.message ?: "Error creando usuario"
+                    _error.value = result.exceptionOrNull()?.message ?: "Error creando usuario"
                 }
 
             } catch (e: Exception) {
@@ -96,7 +104,7 @@ class GestionUsuariosViewModel(
     }
 
     fun actualizarUsuario(
-        correo: String,
+        uid: String,
         nombre: String? = null,
         clave: String? = null,
         rol: String? = null,
@@ -107,13 +115,7 @@ class GestionUsuariosViewModel(
             _error.value = null
 
             try {
-                val result = repository.actualizarUsuarioPorCorreo(
-                    correo = correo,
-                    nombre = nombre,
-                    clave = clave,
-                    rol = rol,
-                    fotoUrl = fotoUrl
-                )
+                val result = repository.actualizarRol(uid, rol ?: "cliente")
 
                 if (result.isSuccess) {
                     obtenerUsuarios()
@@ -129,13 +131,14 @@ class GestionUsuariosViewModel(
         }
     }
 
-    fun eliminarUsuario(correo: String) {
+
+    fun eliminarUsuario(uid: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val result = repository.eliminarUsuario(correo)
+                val result = repository.eliminarUsuario(uid)
 
                 if (result.isSuccess) {
                     obtenerUsuarios()
@@ -150,4 +153,5 @@ class GestionUsuariosViewModel(
             }
         }
     }
+
 }

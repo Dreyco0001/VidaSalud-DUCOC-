@@ -36,19 +36,13 @@ fun GestionUsuariosScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 🔙 BOTÓN VOLVER
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            OutlinedButton(onClick = onVolver) {
-                Text("Volver")
-            }
+        OutlinedButton(onClick = onVolver) {
+            Text("Volver")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // FORM CREAR USUARIO
+        // FORMULARIO CREAR USUARIO
         OutlinedTextField(
             value = correo,
             onValueChange = { correo = it },
@@ -86,10 +80,7 @@ fun GestionUsuariosScreen(
                         nombre = nombre,
                         rol = rol
                     )
-                    correo = ""
-                    clave = ""
-                    nombre = ""
-                    rol = ""
+                    correo = ""; clave = ""; nombre = ""; rol = ""
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -99,12 +90,10 @@ fun GestionUsuariosScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // LOADING
         if (isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
         }
 
-        // ERROR
         error?.let {
             Text(
                 text = it,
@@ -113,17 +102,16 @@ fun GestionUsuariosScreen(
             )
         }
 
-        // LISTA DE USUARIOS
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(usuarios) { usuario ->
                 UsuarioItem(
                     usuario = usuario,
-                    onEliminar = { vm.eliminarUsuario(usuario.correo) },
-                    onActualizar = {
+                    onEliminar = { vm.eliminarUsuario(usuario.uid) },
+                    onActualizar = { nombreNuevo, rolNuevo ->
                         vm.actualizarUsuario(
-                            correo = usuario.correo,
-                            nombre = usuario.nombre,
-                            rol = usuario.rol
+                            uid = usuario.uid,
+                            nombre = nombreNuevo,
+                            rol = rolNuevo
                         )
                     }
                 )
@@ -136,8 +124,10 @@ fun GestionUsuariosScreen(
 fun UsuarioItem(
     usuario: Usuario,
     onEliminar: () -> Unit,
-    onActualizar: () -> Unit
+    onActualizar: (String, String) -> Unit
 ) {
+    var showEditDialog by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,13 +142,64 @@ fun UsuarioItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                OutlinedButton(onClick = onActualizar) {
-                    Text("Actualizar")
+                OutlinedButton(onClick = { showEditDialog = true }) {
+                    Text("Editar")
                 }
+
                 OutlinedButton(onClick = onEliminar) {
                     Text("Eliminar")
                 }
             }
         }
     }
+
+    if (showEditDialog) {
+        EditUsuarioDialog(
+            usuario = usuario,
+            onDismiss = { showEditDialog = false },
+            onSave = { nombre, rol ->
+                onActualizar(nombre, rol)
+                showEditDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun EditUsuarioDialog(
+    usuario: Usuario,
+    onDismiss: () -> Unit,
+    onSave: (String, String) -> Unit
+) {
+    var nombre by remember { mutableStateOf(usuario.nombre) }
+    var rol by remember { mutableStateOf(usuario.rol) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar Usuario") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = { nombre = it },
+                    label = { Text("Nombre") }
+                )
+                OutlinedTextField(
+                    value = rol,
+                    onValueChange = { rol = it },
+                    label = { Text("Rol") }
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onSave(nombre, rol) }) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
