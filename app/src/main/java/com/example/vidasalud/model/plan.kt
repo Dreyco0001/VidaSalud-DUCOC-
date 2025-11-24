@@ -6,5 +6,7 @@ data class Plan(
     val duracion: Int = 0,
     val nivel: String = "",
     val objetivo: String = "",
-    val imagenUrl: String = ""
+    val imagenUrl: String = "",
+    val likesCount: Int = 0,
+    val comentariosCount: Int = 0
 )
