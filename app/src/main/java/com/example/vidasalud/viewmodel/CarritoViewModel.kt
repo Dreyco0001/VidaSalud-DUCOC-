@@ -2,81 +2,123 @@ package com.example.vidasalud.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.vidasalud.model.ItemCarrito
-import com.example.vidasalud.model.Producto
+import com.example.vidasalud.model.Comentario
+import com.example.vidasalud.model.Like
+import com.example.vidasalud.repository.PlanesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class CarritoViewModel : ViewModel() {
 
-    private val _carrito = MutableStateFlow<List<ItemCarrito>>(emptyList())
-    val carrito: StateFlow<List<ItemCarrito>> = _carrito
+    private val repo = PlanesRepository()
 
-    // Agregar producto al carrito
-    fun agregarAlCarrito(producto: Producto) {
+    // ----- ESTADOS DEL PLAN -----
+
+    private val _likes = MutableStateFlow<List<Like>>(emptyList())
+    val likes: StateFlow<List<Like>> = _likes
+
+    private val _comentarios = MutableStateFlow<List<Comentario>>(emptyList())
+    val comentarios: StateFlow<List<Comentario>> = _comentarios
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+
+    // ---------------------------------------------------------
+    //                CARGAR INFORMACIÓN DEL PLAN
+    // ---------------------------------------------------------
+
+    fun cargarLikes(planId: String) {
         viewModelScope.launch {
-            val lista = _carrito.value.toMutableList()
-            val itemExistente = lista.find { it.producto.id == producto.id }
+            try {
+                _likes.value = repo.obtenerLikes(planId)
+            } catch (e: Exception) {
+                _error.value = e.message
+            }
+        }
+    }
 
-            if (itemExistente != null) {
-                itemExistente.cantidad++
+    fun cargarComentarios(planId: String) {
+        viewModelScope.launch {
+            try {
+                _comentarios.value = repo.obtenerComentarios(planId)
+            } catch (e: Exception) {
+                _error.value = e.message
+            }
+        }
+    }
+
+
+    // ---------------------------------------------------------
+    //                          LIKES
+    // ---------------------------------------------------------
+
+    fun darLike(planId: String, userId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val resultado = repo.agregarLike(planId, userId)
+
+            if (resultado.isSuccess) {
+                cargarLikes(planId)
             } else {
-                lista.add(ItemCarrito(producto, cantidad = 1))
+                _error.value = resultado.exceptionOrNull()?.message
             }
 
-            _carrito.value = lista
+            _isLoading.value = false
         }
     }
 
-    // Remover 1 unidad del carrito
-    fun removerDelCarrito(producto: Producto) {
+    fun quitarLike(planId: String, likeId: String) {
         viewModelScope.launch {
-            val lista = _carrito.value.toMutableList()
-            val itemExistente = lista.find { it.producto.id == producto.id }
+            _isLoading.value = true
+            val resultado = repo.quitarLike(planId, likeId)
 
-            if (itemExistente != null) {
-                if (itemExistente.cantidad > 1) {
-                    itemExistente.cantidad--
-                } else {
-                    lista.remove(itemExistente)
-                }
+            if (resultado.isSuccess) {
+                cargarLikes(planId)
+            } else {
+                _error.value = resultado.exceptionOrNull()?.message
             }
 
-            _carrito.value = lista
+            _isLoading.value = false
         }
     }
 
-    // Eliminar totalmente un producto del carrito
-    fun eliminarProductoDelCarrito(producto: Producto) {
+
+    // ---------------------------------------------------------
+    //                      COMENTARIOS
+    // ---------------------------------------------------------
+
+    fun agregarComentario(planId: String, comentario: Comentario) {
         viewModelScope.launch {
-            val lista = _carrito.value.toMutableList()
-            lista.removeAll { it.producto.id == producto.id }
-            _carrito.value = lista
+            _isLoading.value = true
+            val resultado = repo.agregarComentario(planId, comentario)
+
+            if (resultado.isSuccess) {
+                cargarComentarios(planId)
+            } else {
+                _error.value = resultado.exceptionOrNull()?.message
+            }
+
+            _isLoading.value = false
         }
     }
 
-    // Vaciar carrito
-    fun vaciarCarrito() {
+    fun eliminarComentario(planId: String, comentarioId: String) {
         viewModelScope.launch {
-            _carrito.value = emptyList()
+            _isLoading.value = true
+            val resultado = repo.eliminarComentario(planId, comentarioId)
+
+            if (resultado.isSuccess) {
+                cargarComentarios(planId)
+            } else {
+                _error.value = resultado.exceptionOrNull()?.message
+            }
+
+            _isLoading.value = false
         }
-    }
-
-    // Confirmar compra (solo limpia el carrito por ahora)
-    fun confirmarCompra() {
-        viewModelScope.launch {
-            _carrito.value = emptyList()
-        }
-    }
-
-    // Total del carrito
-    fun obtenerTotal(): Double {
-        return _carrito.value.sumOf { it.producto.precio * it.cantidad }
-    }
-
-    // Cantidad total de items
-    fun cantidadTotalItems(): Int {
-        return _carrito.value.sumOf { it.cantidad }
     }
 }
