@@ -1,10 +1,35 @@
 package com.example.vidasalud.ui.screens.gestionUsuarios
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -25,6 +50,7 @@ fun GestionUsuariosScreen(
     var clave by remember { mutableStateOf("") }
     var nombre by remember { mutableStateOf("") }
     var rol by remember { mutableStateOf("") }
+    var mostrarAdmins by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -64,16 +90,37 @@ fun GestionUsuariosScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        OutlinedTextField(
-            value = rol,
-            onValueChange = { rol = it },
-            label = { Text("Rol") },
-            modifier = Modifier.fillMaxWidth()
-        )
+        // Dropdown para roles
+        var rolExpanded by remember { mutableStateOf(false) }
+        Box {
+            OutlinedTextField(
+                value = rol,
+                onValueChange = { },
+                label = { Text("Rol") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { rolExpanded = true },
+                readOnly = true
+            )
+            DropdownMenu(
+                expanded = rolExpanded,
+                onDismissRequest = { rolExpanded = false }
+            ) {
+                listOf("admin", "cliente").forEach { r ->
+                    DropdownMenuItem(
+                        text = { Text(r) },
+                        onClick = {
+                            rol = r
+                            rolExpanded = false
+                        }
+                    )
+                }
+            }
+        }
 
         Button(
             onClick = {
-                if (correo.isNotBlank() && clave.isNotBlank() && nombre.isNotBlank() && rol.isNotBlank()) {
+                if (correo.isNotBlank() && clave.length >= 6 && nombre.isNotBlank() && rol.isNotBlank()) {
                     vm.crearUsuario(
                         correo = correo,
                         clave = clave,
@@ -102,19 +149,53 @@ fun GestionUsuariosScreen(
             )
         }
 
+        val admins = usuarios.filter { it.rol == "admin" }
+        val noAdmins = usuarios.filter { it.rol != "admin" }
+
+        if (admins.isNotEmpty()) {
+            OutlinedButton(
+                onClick = { mostrarAdmins = !mostrarAdmins },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+            ) {
+                Text(if (mostrarAdmins) "Ocultar Administradores" else "Mostrar Administradores")
+            }
+        }
+
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(usuarios) { usuario ->
+            items(noAdmins) { usuario ->
                 UsuarioItem(
                     usuario = usuario,
                     onEliminar = { vm.eliminarUsuario(usuario.uid) },
-                    onActualizar = { nombreNuevo, rolNuevo ->
+                    onActualizar = { nombreNuevo, rolNuevo, correoNuevo, claveNueva ->
                         vm.actualizarUsuario(
                             uid = usuario.uid,
                             nombre = nombreNuevo,
-                            rol = rolNuevo
+                            rol = rolNuevo,
+                            correo = correoNuevo,
+                            clave = claveNueva,
+                            usuariosActuales = usuarios // enviamos la lista completa para validar último admin
                         )
                     }
                 )
+            }
+
+            if (mostrarAdmins) {
+                items(admins) { usuario ->
+                    UsuarioItem(
+                        usuario = usuario,
+                        onEliminar = { vm.eliminarUsuario(usuario.uid) },
+                        onActualizar = { nombreNuevo, rolNuevo, correoNuevo, claveNueva ->
+                            vm.actualizarUsuario(
+                                uid = usuario.uid,
+                                nombre = nombreNuevo,
+                                rol = rolNuevo,
+                                correo = correoNuevo,
+                                clave = claveNueva,
+                                usuariosActuales = usuarios
+                            )
+                        }
+                    )
+                }
             }
         }
     }
@@ -124,7 +205,7 @@ fun GestionUsuariosScreen(
 fun UsuarioItem(
     usuario: Usuario,
     onEliminar: () -> Unit,
-    onActualizar: (String, String) -> Unit
+    onActualizar: (String, String, String, String) -> Unit
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
 
@@ -157,8 +238,8 @@ fun UsuarioItem(
         EditUsuarioDialog(
             usuario = usuario,
             onDismiss = { showEditDialog = false },
-            onSave = { nombre, rol ->
-                onActualizar(nombre, rol)
+            onSave = { nombre, rol, correo, clave ->
+                onActualizar(nombre, rol, correo, clave)
                 showEditDialog = false
             }
         )
@@ -169,10 +250,12 @@ fun UsuarioItem(
 fun EditUsuarioDialog(
     usuario: Usuario,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
+    onSave: (String, String, String, String) -> Unit
 ) {
     var nombre by remember { mutableStateOf(usuario.nombre) }
     var rol by remember { mutableStateOf(usuario.rol) }
+    var correo by remember { mutableStateOf(usuario.correo) }
+    var clave by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -182,17 +265,54 @@ fun EditUsuarioDialog(
                 OutlinedTextField(
                     value = nombre,
                     onValueChange = { nombre = it },
-                    label = { Text("Nombre") }
+                    label = { Text("Nombre") },
+                    modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text("Rol:", style = MaterialTheme.typography.bodyMedium)
+                Row {
+                    Button(
+                        onClick = { rol = "admin" },
+                        colors = if (rol == "admin") ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary)
+                        else ButtonDefaults.buttonColors()
+                    ) {
+                        Text("Admin")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { rol = "cliente" },
+                        colors = if (rol == "cliente") ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary)
+                        else ButtonDefaults.buttonColors()
+                    ) {
+                        Text("Cliente")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedTextField(
-                    value = rol,
-                    onValueChange = { rol = it },
-                    label = { Text("Rol") }
+                    value = correo,
+                    onValueChange = { correo = it },
+                    label = { Text("Correo") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = clave,
+                    onValueChange = { clave = it },
+                    label = { Text("Nueva Contraseña (min 6)") },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
-            Button(onClick = { onSave(nombre, rol) }) {
+            Button(onClick = {
+                if (correo.isNotBlank() && (clave.isBlank() || clave.length >= 6)) {
+                    onSave(nombre, rol, correo, clave)
+                }
+            }) {
                 Text("Guardar")
             }
         },

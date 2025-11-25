@@ -116,7 +116,9 @@ class GestionUsuariosViewModel(
         nombre: String? = null,
         clave: String? = null,
         rol: String? = null,
-        fotoUrl: String? = null
+        correo: String? = null,
+        fotoUrl: String? = null,
+        usuariosActuales: List<Usuario>? = null // <-- nuevo parámetro
     ) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -129,9 +131,22 @@ class GestionUsuariosViewModel(
                 clave?.let { updates["clave"] = it }
                 rol?.let { updates["rol"] = it }
                 fotoUrl?.let { updates["fotoUrl"] = it }
+                correo?.let { updates["correo"] = it }
+
+                // Validación: no degradar al último admin
+                if (rol != null && rol == "cliente" && usuariosActuales != null) {
+                    val adminCount = usuariosActuales.count { it.rol == "admin" }
+                    val esUltimoAdmin = usuariosActuales.find { it.uid == uid }?.rol == "admin" && adminCount == 1
+                    if (esUltimoAdmin) {
+                        _error.value = "No se puede degradar al último admin"
+                        _isLoading.value = false
+                        return@launch
+                    }
+                }
 
                 if (updates.isEmpty()) {
                     _error.value = "No hay cambios para actualizar"
+                    _isLoading.value = false
                     return@launch
                 }
 
