@@ -10,12 +10,12 @@ plugins {
 
 android {
     namespace = "com.example.vidasalud"
-    compileSdk = 36  // ✅ Te lo dejo igual
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.vidasalud"
         minSdk = 24
-        targetSdk = 36  // ✅ Igual
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -32,7 +32,9 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17  // 🔹 Necesario para Firebase Storage + await()
+        // Habilitar Desugaring de APIs
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
@@ -46,6 +48,9 @@ android {
 }
 
 dependencies {
+    // Dependencia para el Desugaring
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
     // 🔹 UI & Compose
     implementation("io.coil-kt:coil-compose:2.4.0")
     implementation(libs.androidx.core.ktx)
@@ -100,9 +105,4 @@ dependencies {
     //Compose UI Test
     androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.2")
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.2")
-
-    //Para usar JUnit5
-    //tasks.withType<Test>().configureEach {
-    //    useJunitPlatform()
-    //}
 }

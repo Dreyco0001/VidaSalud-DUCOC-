@@ -1,7 +1,6 @@
 package com.example.vidasalud.ui.screens.perfil
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
@@ -13,13 +12,11 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,13 +24,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import com.example.vidasalud.ui.screens.compartido.BarraNavegacionPrincipal
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -42,14 +40,48 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
+    navController: NavController,
     nombre: String,
     rol: String,
     onLogout: () -> Unit,
     onVerCatalogo: () -> Unit,
     onGestionAdmin: () -> Unit = {},
-    onGestionUsuarios: () -> Unit = {} // ← AQUI SE AGREGA
+    onGestionUsuarios: () -> Unit = {}
+) {
+    Scaffold(
+        bottomBar = {
+            BarraNavegacionPrincipal(
+                navController = navController,
+                nombreUsuario = nombre,
+                rolUsuario = rol,
+                rutaActual = "perfil/{nombre}/{rol}"
+            )
+        }
+    ) { paddingValues ->
+        ContenidoPerfil(
+            modifier = Modifier.padding(paddingValues),
+            nombre = nombre,
+            rol = rol,
+            onLogout = onLogout,
+            onVerCatalogo = onVerCatalogo,
+            onGestionAdmin = onGestionAdmin,
+            onGestionUsuarios = onGestionUsuarios
+        )
+    }
+}
+
+@Composable
+fun ContenidoPerfil(
+    modifier: Modifier = Modifier,
+    nombre: String,
+    rol: String,
+    onLogout: () -> Unit,
+    onVerCatalogo: () -> Unit,
+    onGestionAdmin: () -> Unit,
+    onGestionUsuarios: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -190,8 +222,9 @@ fun PerfilScreen(
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -297,9 +330,6 @@ fun PerfilScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // -------------------------
-        // 🔥 AQUI ESTÁ LO QUE PEDISTE 🔥
-        // -------------------------
         if (rol.lowercase() == "admin") {
 
             Button(
@@ -333,8 +363,6 @@ fun PerfilScreen(
     }
 }
 
-
-@SuppressLint("UseKtx")
 private fun saveProfileImageUri(context: Context, uri: Uri) {
     val prefs = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
     prefs.edit().putString("profile_image_uri", uri.toString()).apply()

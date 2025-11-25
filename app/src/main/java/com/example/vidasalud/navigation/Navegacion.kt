@@ -14,18 +14,19 @@ import com.example.vidasalud.ui.screens.carrito.CarritoScreen
 import com.example.vidasalud.ui.screens.catalogo.CatalogoScreen
 import com.example.vidasalud.ui.screens.gestionPlanes.GestionPlanesScreen
 import com.example.vidasalud.ui.screens.gestionUsuarios.GestionUsuariosScreen
+import com.example.vidasalud.ui.screens.home.HomeScreen
 import com.example.vidasalud.ui.screens.login.LoginScreen
 import com.example.vidasalud.ui.screens.pago.PagoConfirmacionScreen
 import com.example.vidasalud.ui.screens.perfil.PerfilScreen
 import com.example.vidasalud.ui.screens.registro.RegistroScreen
+import com.example.vidasalud.ui.screens.registroDatos.RegistroDatosScreen
+import com.example.vidasalud.ui.screens.social.FeedScreen
 import com.example.vidasalud.viewmodel.GestionPlanesViewModel
 
 @Composable
 fun AppNavegacion() {
 
     val navController = rememberNavController()
-
-    // 👉 ESTE es ahora el único ViewModel global
     val planesViewModel: GestionPlanesViewModel = viewModel()
 
     NavHost(
@@ -38,14 +39,54 @@ fun AppNavegacion() {
             LoginScreen(
                 onRegisterClick = { navController.navigate("register") },
                 onLoginSuccess = { user ->
+                    // Navega a home pasando NOMBRE y ROL
                     val nombre = Uri.encode(user.nombre)
                     val rol = Uri.encode(user.rol)
-                    navController.navigate("perfil/$nombre/$rol") {
+                    navController.navigate("home/$nombre/$rol") {
                         popUpTo("login") { inclusive = true }
                     }
                 }
             )
         }
+
+        // --- RUTAS PRINCIPALES (AHORA TODAS RECIBEN NOMBRE Y ROL) ---
+
+        composable(
+            route = "home/{nombre}/{rol}",
+            arguments = listOf(
+                navArgument("nombre") { type = NavType.StringType },
+                navArgument("rol") { type = NavType.StringType }
+            )
+        ) { entry ->
+            val nombre = entry.arguments?.getString("nombre") ?: "Usuario"
+            val rol = entry.arguments?.getString("rol") ?: "cliente"
+            HomeScreen(navController = navController, userName = nombre, userRole = rol)
+        }
+        
+        composable(
+            route = "registroDatos/{nombre}/{rol}",
+            arguments = listOf(
+                navArgument("nombre") { type = NavType.StringType },
+                navArgument("rol") { type = NavType.StringType }
+            )
+        ) { entry ->
+            val nombre = entry.arguments?.getString("nombre") ?: "Usuario"
+            val rol = entry.arguments?.getString("rol") ?: "cliente"
+            RegistroDatosScreen(navController = navController, userName = nombre, userRole = rol)
+        }
+
+        composable(
+            route = "feed/{nombre}/{rol}",
+            arguments = listOf(
+                navArgument("nombre") { type = NavType.StringType },
+                navArgument("rol") { type = NavType.StringType }
+            )
+        ) { entry ->
+            val nombre = entry.arguments?.getString("nombre") ?: "Usuario"
+            val rol = entry.arguments?.getString("rol") ?: "cliente"
+            FeedScreen(navController = navController, userName = nombre, userRole = rol)
+        }
+
 
         // REGISTRO
         composable("register") {
@@ -67,6 +108,7 @@ fun AppNavegacion() {
             val rol = entry.arguments?.getString("rol") ?: "cliente"
 
             PerfilScreen(
+                navController = navController, // Parámetro añadido
                 nombre = nombre,
                 rol = rol,
                 onLogout = {
@@ -80,14 +122,14 @@ fun AppNavegacion() {
                 onGestionAdmin = {
                     navController.navigate("gestion_planes/${Uri.encode(nombre)}/${Uri.encode(rol)}")
                 },
-                onGestionUsuarios = {   // 🔥 ESTA ES LA PARTE QUE FALTABA
+                onGestionUsuarios = {
                     navController.navigate("gestion_usuarios/${Uri.encode(nombre)}/${Uri.encode(rol)}")
                 }
             )
         }
 
 
-        // GESTIÓN DE PLANES
+        // ... (El resto de las rutas no necesitan cambios)
         composable(
             route = "gestion_planes/{nombre}/{rol}",
             arguments = listOf(
@@ -113,7 +155,6 @@ fun AppNavegacion() {
             }
         }
 
-        // CATALOGO
         composable(
             route = "catalogo/{nombre}/{rol}",
             arguments = listOf(
@@ -140,7 +181,6 @@ fun AppNavegacion() {
             )
         }
 
-        // CARRITO — AHORA USA GestionPlanesViewModel
         composable(
             route = "carrito/{nombre}/{rol}",
             arguments = listOf(
@@ -155,10 +195,7 @@ fun AppNavegacion() {
             CarritoScreen(
                 nombre = nombre,
                 rol = rol,
-
-                // 👉 reemplazo total: ahora recibe tu VIEWMODEL PRINCIPAL
                 viewModel = planesViewModel,
-
                 onVerPerfil = { navController.navigate("perfil/$nombre/$rol") },
                 onLogout = {
                     navController.navigate("login") {
@@ -176,7 +213,6 @@ fun AppNavegacion() {
             )
         }
 
-        // GESTIÓN DE USUARIOS
         composable(
             route = "gestion_usuarios/{nombre}/{rol}",
             arguments = listOf(
@@ -188,7 +224,6 @@ fun AppNavegacion() {
             val nombre = entry.arguments?.getString("nombre") ?: ""
             val rol = entry.arguments?.getString("rol") ?: "cliente"
 
-            // Validación de admin igual que en gestión de planes
             when {
                 nombre.isBlank() ->
                     Text("Error: parámetro 'nombre' no recibido.")
@@ -202,9 +237,7 @@ fun AppNavegacion() {
                     )
             }
         }
-
-
-        // PAGO
+        
         composable("pago") {
             PagoConfirmacionScreen(
                 nombreUsuario = "Cliente",
