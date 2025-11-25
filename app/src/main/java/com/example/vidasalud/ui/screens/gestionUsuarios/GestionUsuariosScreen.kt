@@ -1,8 +1,6 @@
 package com.example.vidasalud.ui.screens.gestionUsuarios
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,8 +16,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -49,7 +45,7 @@ fun GestionUsuariosScreen(
     var correo by remember { mutableStateOf("") }
     var clave by remember { mutableStateOf("") }
     var nombre by remember { mutableStateOf("") }
-    var rol by remember { mutableStateOf("") }
+    var rol by remember { mutableStateOf("cliente") } // valor inicial por defecto
     var mostrarAdmins by remember { mutableStateOf(false) }
 
     Column(
@@ -57,7 +53,6 @@ fun GestionUsuariosScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-
         Text("Gestión de Usuarios", style = MaterialTheme.typography.titleLarge)
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -90,33 +85,28 @@ fun GestionUsuariosScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Dropdown para roles
-        var rolExpanded by remember { mutableStateOf(false) }
-        Box {
-            OutlinedTextField(
-                value = rol,
-                onValueChange = { },
-                label = { Text("Rol") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { rolExpanded = true },
-                readOnly = true
-            )
-            DropdownMenu(
-                expanded = rolExpanded,
-                onDismissRequest = { rolExpanded = false }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text("Rol:", style = MaterialTheme.typography.bodyMedium)
+        Row {
+            Button(
+                onClick = { rol = "admin" },
+                colors = if (rol == "admin") ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary)
+                else ButtonDefaults.buttonColors()
             ) {
-                listOf("admin", "cliente").forEach { r ->
-                    DropdownMenuItem(
-                        text = { Text(r) },
-                        onClick = {
-                            rol = r
-                            rolExpanded = false
-                        }
-                    )
-                }
+                Text("Admin")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = { rol = "cliente" },
+                colors = if (rol == "cliente") ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary)
+                else ButtonDefaults.buttonColors()
+            ) {
+                Text("Cliente")
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = {
@@ -127,7 +117,7 @@ fun GestionUsuariosScreen(
                         nombre = nombre,
                         rol = rol
                     )
-                    correo = ""; clave = ""; nombre = ""; rol = ""
+                    correo = ""; clave = ""; nombre = ""; rol = "cliente"
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -173,7 +163,7 @@ fun GestionUsuariosScreen(
                             rol = rolNuevo,
                             correo = correoNuevo,
                             clave = claveNueva,
-                            usuariosActuales = usuarios // enviamos la lista completa para validar último admin
+                            usuariosActuales = usuarios
                         )
                     }
                 )
