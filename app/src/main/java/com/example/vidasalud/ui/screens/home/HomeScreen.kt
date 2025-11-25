@@ -97,6 +97,8 @@ fun HomeScreen(navController: NavController, userName: String, userRole: String)
             Spacer(modifier = Modifier.height(16.dp))
             WeightCard()
             Spacer(modifier = Modifier.height(16.dp))
+            BurnedCaloriesCard()
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -190,7 +192,7 @@ fun HealthCarousel() {
         HorizontalPager(
             state = pagerState,
             contentPadding = PaddingValues(horizontal = 24.dp),
-            modifier = Modifier.height(140.dp)
+            modifier = Modifier.height(100.dp)
         ) { page ->
             val actualIndex = (page - initialPage).mod(TipsSalud.size)
             
@@ -336,6 +338,15 @@ fun WeightCard() {
         icon = Icons.Default.Person,
         title = "Peso",
         value = "60 kg"
+    )
+}
+
+@Composable
+fun BurnedCaloriesCard() {
+    InfoCard(
+        icon = Icons.Default.Whatshot,
+        title = "Calorías quemadas",
+        value = "505"
     )
 }
 
