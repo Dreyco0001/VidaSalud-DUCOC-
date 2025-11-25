@@ -1,5 +1,6 @@
 package com.example.vidasalud.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vidasalud.model.Usuario
@@ -31,43 +32,50 @@ class GestionUsuariosViewModel(
             _error.value = null
 
             try {
+                Log.d("VM_USUARIOS", "Solicitando usuarios al repo...")
+
                 val result = repository.obtenerUsuarios()
 
                 if (result.isSuccess) {
 
                     val listaMap = result.getOrNull() ?: emptyList()
+                    Log.d("VM_USUARIOS", "Lista recibida: ${listaMap.size} usuarios")
 
-                    val listaUsuarios = listaMap.map { data ->
-
-                        // 🔥 Conversiones 100% seguras sin crashear
-                        val correo = data["correo"]?.toString() ?: ""
-                        val nombre = data["nombre"]?.toString() ?: ""
-                        val clave = data["clave"]?.toString() ?: ""
-                        val rol = data["rol"]?.toString() ?: ""
-                        val fotoUrl = data["fotoUrl"]?.toString()
+                    val listaUsuarios = listaMap.map { map ->
+                        Log.d("VM_USUARIOS", "Usuario bruto Firestore: $map")
 
                         Usuario(
-                            correo = correo,
-                            nombre = nombre,
-                            clave = clave,
-                            rol = rol,
-                            fotoUrl = fotoUrl
+                            uid = map["uid"]?.toString() ?: "",
+                            correo = map["correo"]?.toString() ?: "",
+                            nombre = map["nombre"]?.toString() ?: "",
+                            clave = map["clave"]?.toString() ?: "",
+                            rol = map["rol"]?.toString() ?: "",
+                            fotoUrl = when {
+                                map["fotoUrl"]?.toString()?.isNotEmpty() == true -> map["fotoUrl"].toString()
+                                map["fotoPerfil"]?.toString()?.isNotEmpty() == true -> map["fotoPerfil"].toString()
+                                else -> null
+                            }
                         )
                     }
 
                     _usuarios.value = listaUsuarios
 
                 } else {
-                    _error.value = "Error cargando usuarios"
+                    val ex = result.exceptionOrNull()
+                    Log.e("VM_USUARIOS", "Falla del repo: ", ex)
+                    _error.value = "Error cargando usuarios 1: ${ex?.message ?: "sin detalle"}"
                 }
 
             } catch (e: Exception) {
-                _error.value = "Error cargando usuarios: ${e.localizedMessage}"
+                Log.e("VM_USUARIOS", "EXCEPCIÓN en obtenerUsuarios()", e)
+                _error.value = "Error cargando usuarios 2: ${e.localizedMessage}"
             } finally {
                 _isLoading.value = false
             }
         }
     }
+
+
 
     fun crearUsuario(
         correo: String,
@@ -115,7 +123,22 @@ class GestionUsuariosViewModel(
             _error.value = null
 
             try {
-                val result = repository.actualizarRol(uid, rol ?: "cliente")
+                val updates = mutableMapOf<String, Any?>()
+
+                nombre?.let { updates["nombre"] = it }
+                clave?.let { updates["clave"] = it }
+                rol?.let { updates["rol"] = it }
+                fotoUrl?.let { updates["fotoUrl"] = it }
+
+                if (updates.isEmpty()) {
+                    _error.value = "No hay cambios para actualizar"
+                    return@launch
+                }
+
+                val result = repository.actualizarUsuarioPorUid(
+                    uid = uid,
+                    updates = updates
+                )
 
                 if (result.isSuccess) {
                     obtenerUsuarios()
@@ -130,6 +153,8 @@ class GestionUsuariosViewModel(
             }
         }
     }
+
+
 
 
     fun eliminarUsuario(uid: String) {

@@ -160,16 +160,20 @@ class UsuarioRepository {
         return try {
             val query = db.collection("usuario").get().await()
 
+            // DEBUG: tamaño y primer doc
+            android.util.Log.d("REPO_USUARIOS", "docs=${query.documents.size}")
+            android.util.Log.d("REPO_USUARIOS", "primer=${query.documents.firstOrNull()?.data}")
+
             val lista = query.documents.map { doc ->
                 val data = doc.data ?: emptyMap<String, Any>()
-
-                // MEGA IMPORTANTE: incluir UID real SIEMPRE
                 data + ("uid" to doc.id)
             }
 
             Result.success(lista)
 
         } catch (e: Exception) {
+            // LOG completo para saber por qué falla
+            android.util.Log.e("REPO_USUARIOS", "Error obtenerUsuarios", e)
             Result.failure(e)
         }
     }
@@ -185,6 +189,19 @@ class UsuarioRepository {
 
             Result.success(Unit)
 
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun actualizarUsuarioPorUid(uid: String, updates: Map<String, Any?>): Result<Unit> {
+        return try {
+            db.collection("usuario")
+                .document(uid)
+                .update(updates)
+                .await()
+
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
