@@ -81,10 +81,8 @@ fun AppNavegacion() {
                 navArgument("nombre") { type = NavType.StringType },
                 navArgument("rol") { type = NavType.StringType }
             )
-        ) { entry ->
-            val nombre = entry.arguments?.getString("nombre") ?: "Usuario"
-            val rol = entry.arguments?.getString("rol") ?: "cliente"
-            FeedScreen(navController = navController, userName = nombre, userRole = rol)
+        ) {
+            FeedScreen()
         }
 
 
@@ -143,7 +141,7 @@ fun AppNavegacion() {
 
             when {
                 nombre.isBlank() ->
-                    Text("Error: parámetro 'nombre' no recibido.")
+                    Text("Error: parámetro \'nombre\' no recibido.")
 
                 rol != "admin" ->
                     Text("Acceso denegado — Solo admin puede entrar.")
@@ -226,7 +224,7 @@ fun AppNavegacion() {
 
             when {
                 nombre.isBlank() ->
-                    Text("Error: parámetro 'nombre' no recibido.")
+                    Text("Error: parámetro \'nombre\' no recibido.")
 
                 rol != "admin" ->
                     Text("Acceso denegado — Solo admin puede entrar.")

@@ -10,6 +10,15 @@ class AuthRepository {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
 
+    suspend fun getCurrentUserData(): Usuario? {
+        val firebaseUser = auth.currentUser
+        return if (firebaseUser != null) {
+            fetchUserDataFromFirestore(firebaseUser.uid, firebaseUser.email ?: "")
+        } else {
+            null
+        }
+    }
+
     suspend fun login(correo: String, clave: String): Usuario? {
         // Se intenta iniciar sesión directamente.
         // signInWithEmailAndPassword lanzará una excepción específica si el usuario no existe
