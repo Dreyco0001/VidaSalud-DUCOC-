@@ -2,6 +2,7 @@ package com.example.vidasalud.ui.screens.home
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,7 +29,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.vidasalud.ui.screens.compartido.BarraNavegacionPrincipal
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import java.time.DayOfWeek
 import java.time.LocalDate
 
@@ -38,24 +42,34 @@ data class TipSalud(
 )
 
 val TipsSalud = listOf(
-    TipSalud("Evita tomar cafeína después de las 7 pm", Color(0xFFE0F7FA)),
-    TipSalud("Has quemado más calorías esta semana versus la semana anterior, ¡Sigue así!", Color(0xFFFFF9C4)),
-    TipSalud("Prueba irte a dormir más temprano para cumplir tu objetivo de sueño.", Color(0xFFF3E5F5))
+    TipSalud("Evita tomar cafeína después de las 7 pm", Color(0xFFFFBACD)),
+    TipSalud("Has quemado más calorías esta semana versus la semana anterior, ¡Sigue así!", Color(
+        0xFFFFF9C4
+    )
+    ),
+    TipSalud("Prueba irte a dormir más temprano para cumplir tu objetivo de sueño.", Color(
+        0xFFC7EAE7
+    )
+    )
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController, userName: String, userRole: String) {
-    var showNotificationsDialog by remember { mutableStateOf(false) }
+    var rutaActual by remember { mutableStateOf("home/{nombre}/{rol}") }
 
-    // El Scaffold ahora maneja los insets de la barra de estado
     Scaffold(
-        modifier = Modifier.statusBarsPadding(), // <- SOLUCIÓN AQUÍ
+        modifier = Modifier.statusBarsPadding(),
         containerColor = Color.White,
         topBar = {
             HomeTopBar(
                 userName = userName,
-                onNotificationsClick = { showNotificationsDialog = true }
+                userRole = userRole,
+                navController = navController,
+                onProfileClick = {
+                    rutaActual = "perfil/{nombre}/{rol}"
+                    navController.navigate("perfil/$userName/$userRole")
+                }
             )
         },
         bottomBar = {
@@ -63,14 +77,10 @@ fun HomeScreen(navController: NavController, userName: String, userRole: String)
                 navController = navController,
                 nombreUsuario = userName,
                 rolUsuario = userRole,
-                rutaActual = "home/{nombre}/{rol}"
+                rutaActual = rutaActual
             )
         }
     ) { paddingValues ->
-        if (showNotificationsDialog) {
-            NotificationsDialog(onDismiss = { showNotificationsDialog = false })
-        }
-
         Column(
             modifier = Modifier
                 .padding(paddingValues)
@@ -92,7 +102,12 @@ fun HomeScreen(navController: NavController, userName: String, userRole: String)
 }
 
 @Composable
-fun HomeTopBar(userName: String, onNotificationsClick: () -> Unit) {
+fun HomeTopBar(
+    userName: String,
+    userRole: String,
+    navController: NavController,
+    onProfileClick: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -115,38 +130,51 @@ fun HomeTopBar(userName: String, onNotificationsClick: () -> Unit) {
                 color = Color.Gray
             )
             Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = onNotificationsClick) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Notificaciones",
-                    tint = Color.Gray
-                )
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onProfileClick),
+                contentAlignment = Alignment.Center
+            ) {
+                ProfileImage()
             }
         }
     }
 }
 
 @Composable
-fun NotificationsDialog(onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Notificaciones") },
-        text = {
-            Column {
-                Text("Esto es una notificación xd 1")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Esto es una notificación xd 2")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Esto es una notificación xd 3")
+fun ProfileImage() {
+    val user = FirebaseAuth.getInstance().currentUser
+    var photoUrl by remember { mutableStateOf<String?>(null) }
+
+    if (user != null) {
+        val firestore = FirebaseFirestore.getInstance()
+        firestore.collection("usuario").document(user.uid)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document != null) {
+                    photoUrl = document.getString("fotoPerfil")
+                }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cerrar")
-            }
-        }
-    )
+    }
+
+    if (photoUrl != null) {
+        Image(
+            painter = rememberAsyncImagePainter(photoUrl),
+            contentDescription = "Foto de perfil",
+            modifier = Modifier.fillMaxSize()
+        )
+    } else {
+        Icon(
+            imageVector = Icons.Default.Person,
+            contentDescription = "Perfil",
+            tint = Color.Gray,
+            modifier = Modifier.size(24.dp)
+        )
+    }
 }
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
