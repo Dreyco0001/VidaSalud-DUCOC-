@@ -18,11 +18,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vidasalud.model.Plan
 import com.example.vidasalud.repository.PlanesRepository
-import com.example.vidasalud.viewmodel.CarritoViewModel
 
 @Composable
 fun CatalogoScreen(
-    viewModel: CarritoViewModel = viewModel(),
     nombre: String = "Cliente",
     rol: String = "cliente",
     onVerPerfil: () -> Unit = {},
