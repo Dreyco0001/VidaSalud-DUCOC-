@@ -1,3 +1,4 @@
+
 package com.example.vidasalud.ui.screens.home
 
 import androidx.compose.foundation.Canvas
@@ -28,9 +29,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.vidasalud.ui.screens.compartido.BarraNavegacionPrincipal
+import com.example.vidasalud.viewmodel.HomeViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.DayOfWeek
@@ -55,8 +58,14 @@ val TipsSalud = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController, userName: String, userRole: String) {
+fun HomeScreen(
+    navController: NavController,
+    userName: String,
+    userRole: String,
+    homeViewModel: HomeViewModel = viewModel()
+) {
     var rutaActual by remember { mutableStateOf("home/{nombre}/{rol}") }
+    val sleepData by homeViewModel.sleepData
 
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
@@ -91,7 +100,12 @@ fun HomeScreen(navController: NavController, userName: String, userRole: String)
             Spacer(modifier = Modifier.height(16.dp))
             HealthCarousel()
             Spacer(modifier = Modifier.height(24.dp))
-            SleepChartCard()
+            SleepChartCard(
+                navController = navController,
+                sleepData = sleepData,
+                userName = userName,
+                userRole = userRole
+            )
             Spacer(modifier = Modifier.height(16.dp))
             StepsCard()
             Spacer(modifier = Modifier.height(16.dp))
@@ -242,9 +256,11 @@ fun HealthCarousel() {
 
 
 @Composable
-fun SleepChartCard() {
+fun SleepChartCard(navController: NavController, sleepData: List<Float>, userName: String, userRole: String) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { navController.navigate("registroDatos/$userName/$userRole") },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
     ) {
@@ -257,14 +273,20 @@ fun SleepChartCard() {
                 fontSize = 18.sp
             )
             Spacer(modifier = Modifier.height(16.dp))
-            SleepChart()
+            SleepChart(sleepData = sleepData)
         }
     }
 }
 
 @Composable
-fun SleepChart() {
-    val sleepData = listOf(3f, 5f, 6f, 4f, 7f, 12f, 8f)
+fun SleepChart(sleepData: List<Float>) {
+    if (sleepData.isEmpty()) {
+        Box(modifier = Modifier.height(150.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text("No hay datos de sueño disponibles.")
+        }
+        return
+    }
+
     val today = LocalDate.now()
     val daysOfWeek = (0..6).map { today.minusDays(it.toLong()).dayOfWeek }
         .reversed()
