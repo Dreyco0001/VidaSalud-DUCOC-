@@ -20,7 +20,7 @@ import com.example.vidasalud.ui.screens.pago.PagoConfirmacionScreen
 import com.example.vidasalud.ui.screens.perfil.PerfilScreen
 import com.example.vidasalud.ui.screens.registro.RegistroScreen
 import com.example.vidasalud.ui.screens.registroDatos.RegistroDatosScreen
-import com.example.vidasalud.ui.screens.social.FeedScreen
+//import com.example.vidasalud.ui.screens.social.FeedScreen
 import com.example.vidasalud.viewmodel.GestionPlanesViewModel
 
 @Composable
@@ -82,7 +82,7 @@ fun AppNavegacion() {
                 navArgument("rol") { type = NavType.StringType }
             )
         ) {
-            FeedScreen()
+            //FeedScreen()
         }
 
 
