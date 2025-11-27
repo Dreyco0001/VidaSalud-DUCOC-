@@ -2,8 +2,6 @@ package com.example.vidasalud.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.vidasalud.model.Comentario
-import com.example.vidasalud.model.Like
 import com.example.vidasalud.repository.PlanesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -1,8 +1,6 @@
 package com.example.vidasalud.repository
 
 import com.example.vidasalud.model.Plan
-import com.example.vidasalud.model.Like
-import com.example.vidasalud.model.Comentario
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -12,7 +10,7 @@ class PlanesRepository {
     private val planesCollection = db.collection("planes")
 
     // --------------------------
-    //   CRUD PRINCIPAL DE PLANES
+    //   CREAR PLAN
     // --------------------------
 
     suspend fun crearPlan(
@@ -23,8 +21,7 @@ class PlanesRepository {
         imagenUrl: String? = null
     ): Result<Unit> {
         return try {
-
-            val nuevoPlan = hashMapOf(
+            val data = hashMapOf(
                 "nombre" to nombre,
                 "duracion" to duracion,
                 "nivel" to nivel,
@@ -32,13 +29,17 @@ class PlanesRepository {
                 "imagenUrl" to (imagenUrl ?: "")
             )
 
-            planesCollection.add(nuevoPlan).await()
+            planesCollection.add(data).await()
             Result.success(Unit)
 
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
+    // --------------------------
+    //   OBTENER PLANES
+    // --------------------------
 
     suspend fun obtenerPlanes(): List<Plan> {
         return try {
@@ -50,6 +51,10 @@ class PlanesRepository {
             emptyList()
         }
     }
+
+    // --------------------------
+    //   ESCUCHAR PLANES
+    // --------------------------
 
     fun escucharPlanes(onChange: (List<Plan>) -> Unit) {
         planesCollection.addSnapshotListener { snapshot, error ->
@@ -66,6 +71,10 @@ class PlanesRepository {
         }
     }
 
+    // --------------------------
+    //   ACTUALIZAR PLAN
+    // --------------------------
+
     suspend fun actualizarPlan(
         id: String,
         nombre: String? = null,
@@ -74,134 +83,34 @@ class PlanesRepository {
         objetivo: String? = null,
         imagenUrl: String? = null
     ): Result<Unit> {
-
         return try {
-            val actualizaciones = mutableMapOf<String, Any>()
+            val updates = mutableMapOf<String, Any>()
 
-            nombre?.let { actualizaciones["nombre"] = it }
-            duracion?.let { actualizaciones["duracion"] = it }
-            nivel?.let { actualizaciones["nivel"] = it }
-            objetivo?.let { actualizaciones["objetivo"] = it }
-            imagenUrl?.let { actualizaciones["imagenUrl"] = it }
+            nombre?.let { updates["nombre"] = it }
+            duracion?.let { updates["duracion"] = it }
+            nivel?.let { updates["nivel"] = it }
+            objetivo?.let { updates["objetivo"] = it }
+            imagenUrl?.let { updates["imagenUrl"] = it }
 
-            planesCollection.document(id).update(actualizaciones).await()
+            if (updates.isNotEmpty()) {
+                planesCollection.document(id).update(updates).await()
+            }
+
             Result.success(Unit)
 
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
+    // --------------------------
+    //   ELIMINAR PLAN
+    // --------------------------
 
     suspend fun eliminarPlan(id: String): Result<Unit> {
         return try {
             planesCollection.document(id).delete().await()
             Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    // --------------------------
-    //       LIKES POR PLAN
-    // --------------------------
-
-    suspend fun agregarLike(planId: String, userId: String): Result<Unit> {
-        return try {
-            val likeData = mapOf(
-                "userId" to userId,
-                "timestamp" to System.currentTimeMillis()
-            )
-
-            planesCollection.document(planId)
-                .collection("likes")
-                .add(likeData)
-                .await()
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun quitarLike(planId: String, likeId: String): Result<Unit> {
-        return try {
-            planesCollection.document(planId)
-                .collection("likes")
-                .document(likeId)
-                .delete()
-                .await()
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun obtenerLikes(planId: String): List<Like> {
-        return try {
-            val snap = planesCollection.document(planId)
-                .collection("likes")
-                .get()
-                .await()
-
-            snap.map { doc ->
-                Like(
-                    id = doc.id,
-                    userId = doc.getString("userId") ?: "",
-                    timestamp = doc.getLong("timestamp") ?: 0L
-                )
-            }
-
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    // --------------------------
-    //    COMENTARIOS POR PLAN
-    // --------------------------
-
-    suspend fun agregarComentario(planId: String, comentario: Comentario): Result<Unit> {
-        return try {
-            planesCollection.document(planId)
-                .collection("comentarios")
-                .add(comentario)
-                .await()
-
-            Result.success(Unit)
-
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun obtenerComentarios(planId: String): List<Comentario> {
-        return try {
-            val snap = planesCollection.document(planId)
-                .collection("comentarios")
-                .orderBy("timestamp")
-                .get()
-                .await()
-
-            snap.documents.mapNotNull { doc ->
-                doc.toObject(Comentario::class.java)?.copy(id = doc.id)
-            }
-
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    suspend fun eliminarComentario(planId: String, comentarioId: String): Result<Unit> {
-        return try {
-            planesCollection.document(planId)
-                .collection("comentarios")
-                .document(comentarioId)
-                .delete()
-                .await()
-
-            Result.success(Unit)
-
         } catch (e: Exception) {
             Result.failure(e)
         }
