@@ -1,43 +1,65 @@
+
 package com.example.vidasalud.ui.screens.registroDatos
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.vidasalud.ui.screens.compartido.BarraNavegacionPrincipal
+import com.example.vidasalud.viewmodel.RegistroDatosViewModel
+import kotlinx.coroutines.launch
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegistroDatosScreen(navController: NavController, userName: String, userRole: String) {
+fun RegistroDatosScreen(
+    navController: NavController,
+    userName: String,
+    userRole: String,
+    registroDatosViewModel: RegistroDatosViewModel = viewModel()
+) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // Observar el estado de guardado del ViewModel
+    val saveStatus by registroDatosViewModel.saveStatus
+    LaunchedEffect(saveStatus) {
+        saveStatus?.let {
+            snackbarHostState.showSnackbar(it)
+            registroDatosViewModel.resetSaveStatus() // Limpiar el estado después de mostrar el mensaje
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.White,
         bottomBar = {
             BarraNavegacionPrincipal(
                 navController = navController,
                 nombreUsuario = userName,
                 rolUsuario = userRole,
-                rutaActual = "registroDatos/{nombre}/{rol}"
+                rutaActual = "registro_datos"
             )
         }
     ) { paddingValues ->
@@ -58,26 +80,98 @@ fun RegistroDatosScreen(navController: NavController, userName: String, userRole
                     color = Color.Black,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(
-                    onClick = { /*TODO*/ },
-                    modifier = Modifier
-                        .offset(y = 4.dp)
-                        .clip(CircleShape)
-                        .background(Color.DarkGray)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Agregar",
-                        tint = Color.White
-                    )
-                }
             }
-            Spacer(modifier = Modifier.height(32.dp)) // Aumentado el espacio
-            // contenido real de aqui pa abajo
+            Spacer(modifier = Modifier.height(32.dp))
+            SleepDataEntry()
+            Spacer(modifier = Modifier.height(32.dp))
             MacroNutrientTracker()
         }
     }
 }
+
+@Composable
+fun SleepDataEntry(
+    viewModel: RegistroDatosViewModel = viewModel()
+) {
+    var sleepHours by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+    val daysOfWeek = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
+    val currentDay = LocalDate.now().dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es", "ES")).replaceFirstChar { it.uppercase() }
+    var selectedDay by remember { mutableStateOf(currentDay) }
+
+    Column {
+        Text(
+            "Ingrese sueño:",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = sleepHours,
+            onValueChange = { sleepHours = it },
+            label = { Text("Horas de sueño (ej: 6.5)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Box {
+            OutlinedTextField(
+                value = selectedDay,
+                onValueChange = { },
+                readOnly = true,
+                label = { Text("Día de la semana") },
+                trailingIcon = {
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = "Desplegar",
+                        Modifier.clickable { expanded = !expanded }
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                daysOfWeek.forEach { day ->
+                    DropdownMenuItem(
+                        text = { Text(day) },
+                        onClick = {
+                            selectedDay = day
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                val hours = sleepHours.toFloatOrNull()
+                if (hours != null) {
+                    val dayAbbreviation = when (selectedDay) {
+                        "Lunes" -> "L"
+                        "Martes" -> "M"
+                        "Miércoles" -> "X"
+                        "Jueves" -> "J"
+                        "Viernes" -> "V"
+                        "Sábado" -> "S"
+                        "Domingo" -> "D"
+                        else -> ""
+                    }
+                    if (dayAbbreviation.isNotEmpty()) {
+                        viewModel.saveSleepData(dayAbbreviation, hours)
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Guardar")
+        }
+    }
+}
+
 
 @Composable
 fun MacroNutrientTracker() {
@@ -102,7 +196,7 @@ fun MacroNutrientTracker() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(102.dp), // Tamaño reducido en un 20% más
+            modifier = Modifier.size(102.dp),
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
