@@ -7,9 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.vidasalud.model.Comentario
 import com.example.vidasalud.repository.FeedRepository
 import kotlinx.coroutines.launch
-import java.io.IOException
 import com.google.firebase.firestore.FirebaseFirestoreException
-
 
 class FeedViewModel(
     private val repo: FeedRepository = FeedRepository()
@@ -36,47 +34,36 @@ class FeedViewModel(
     }
 
     // --------------------------------------------------------------
-    // 🔥 MANEJADOR REFORZADO DE ERRORES FIREBASE
+    // 🔥 MANEJADOR COMPLETO DE ERRORES FIREBASE
     // --------------------------------------------------------------
-    private fun manejarFirebaseError(e: Exception) {
+    private fun manejarFirebaseError(e: Exception, userIdEnviado: String = "") {
+        val authUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "No autenticado"
+        val msgBase = e.message ?: "Error desconocido en Firebase."
 
-        // Mensaje base
-        var msg = e.message ?: "Error desconocido en Firebase."
+        // Construimos el mensaje final
+        val msg = """
+🔥 Firebase bloqueó la operación
 
-        // -----------------------------
-        // 💥 ERRORES DE PERMISOS
-        // -----------------------------
-        if (msg.contains("PERMISSION_DENIED", true) ||
-            msg.contains("insufficient permissions", true)
-        ) {
-            msg = "PERMISOS DENEGADOS — Firebase bloqueó la operación."
-        }
+🔎 Mensaje original:
+$msgBase
 
-        // -----------------------------
-        // 💥 ERRORES POR userId (cuando Firestore valida request.auth.uid)
-        // -----------------------------
-        if (msg.contains("userId", true) ||
-            msg.contains("uid", true) ||
-            msg.contains("Missing or insufficient permissions", true)
-        ) {
+⚠ Comparación de IDs requerida por Firestore:
+request.resource.data.userId == request.auth.uid
 
-            msg += "\n\n⚠ Posible error por ID.\n" +
-                    "Comparación esperada por Firebase:\n" +
-                    "→ request.resource.data.userId == request.auth.uid\n\n" +
-                    "Ejemplos:\n" +
-                    "• userId enviado desde la app: (revísalo en el objeto Comentario)\n" +
-                    "• userId autenticado en Firebase: FirebaseAuth.getInstance().currentUser?.uid\n\n" +
-                    "Si NO coinciden → comentario no se crea."
-        }
+Ejemplo:
+• userId enviado desde tu app: $userIdEnviado
+• auth.uid real del usuario: $authUid
 
-        // Manda el mensaje final
+Si NO coinciden → Firestore devuelve PERMISSION_DENIED.
+""".trimIndent()
+
         _error.postValue(msg)
         e.printStackTrace()
     }
 
 
     // --------------------------------------------------------------
-    // ENVIAR
+    // CREAR COMENTARIO
     // --------------------------------------------------------------
     fun enviarMensaje(
         texto: String,
@@ -85,7 +72,7 @@ class FeedViewModel(
         fotoUrl: String = ""
     ) {
         if (texto.length > 250) {
-            _error.value = "Máximo 250 caracteres"
+            _error.value = "Máximo 250 caracteres."
             return
         }
 
@@ -103,7 +90,7 @@ class FeedViewModel(
                 val result = repo.enviarComentario(comentario)
 
                 if (result.isFailure) {
-                    manejarFirebaseError((result.exceptionOrNull() ?: Exception("Fallo desconocido.")) as Exception)
+                    manejarFirebaseError(result.exceptionOrNull()!! as Exception)
                 }
 
             } catch (e: Exception) {
@@ -113,7 +100,7 @@ class FeedViewModel(
     }
 
     // --------------------------------------------------------------
-    // EDITAR
+    // EDITAR COMENTARIO
     // --------------------------------------------------------------
     fun editarComentario(
         comentarioId: String,
@@ -122,18 +109,16 @@ class FeedViewModel(
         isAdmin: Boolean = false
     ) {
         if (nuevoMensaje.length > 250) {
-            _error.value = "Máximo 250 caracteres"
+            _error.value = "Máximo 250 caracteres."
             return
         }
 
         viewModelScope.launch {
             try {
                 val result = repo.editarComentario(comentarioId, nuevoMensaje, userId, isAdmin)
-
                 if (result.isFailure) {
-                    manejarFirebaseError((result.exceptionOrNull() ?: Exception("Error al editar.")) as Exception)
+                    manejarFirebaseError(result.exceptionOrNull()!! as Exception)
                 }
-
             } catch (e: Exception) {
                 manejarFirebaseError(e)
             }
@@ -141,7 +126,7 @@ class FeedViewModel(
     }
 
     // --------------------------------------------------------------
-    // ELIMINAR
+    // ELIMINAR COMENTARIO
     // --------------------------------------------------------------
     fun eliminarComentario(
         comentarioId: String,
@@ -151,11 +136,9 @@ class FeedViewModel(
         viewModelScope.launch {
             try {
                 val result = repo.eliminarComentario(comentarioId, userId, isAdmin)
-
                 if (result.isFailure) {
-                    manejarFirebaseError((result.exceptionOrNull() ?: Exception("Error al eliminar.")) as Exception)
+                    manejarFirebaseError(result.exceptionOrNull()!! as Exception)
                 }
-
             } catch (e: Exception) {
                 manejarFirebaseError(e)
             }
@@ -163,7 +146,7 @@ class FeedViewModel(
     }
 
     // --------------------------------------------------------------
-    // LIKE
+    // LIKE / UNLIKE
     // --------------------------------------------------------------
     fun toggleLike(comentarioId: String, userId: String) {
         viewModelScope.launch {
