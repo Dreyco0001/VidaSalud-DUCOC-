@@ -1,11 +1,13 @@
+
 package com.example.vidasalud.repository
 
+import com.example.vidasalud.model.Usuario
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class UsuarioRepository {
 
@@ -225,10 +227,36 @@ class UsuarioRepository {
     }
 
     // --------------------------------------------------------------------
+    // ACTUALIZAR PESO
+    // --------------------------------------------------------------------
+    suspend fun updateWeight(userId: String, newWeight: Float): Result<Unit> {
+        return try {
+            val userRef = db.collection("usuario").document(userId)
+            val snapshot = userRef.get().await()
+            val user = snapshot.toObject(Usuario::class.java)
+
+            if (user != null) {
+                val updates = hashMapOf(
+                    "pesoAnteanterior" to user.pesoAnterior,
+                    "pesoAnterior" to user.pesoActual,
+                    "pesoActual" to newWeight,
+                    "fechaPesoAnteanterior" to user.fechaPesoAnterior,
+                    "fechaPesoAnterior" to user.fechaPesoActual,
+                    "fechaPesoActual" to getCurrentDate()
+                )
+                userRef.update(updates as Map<String, Any?>).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // --------------------------------------------------------------------
     // FECHA
     // --------------------------------------------------------------------
     private fun getCurrentDate(): String {
-        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
-        return sdf.format(Date())
+        val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
+        return LocalDateTime.now().format(formatter)
     }
 }

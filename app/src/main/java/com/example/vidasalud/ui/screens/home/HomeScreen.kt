@@ -12,6 +12,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -26,9 +27,11 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
@@ -65,7 +68,26 @@ fun HomeScreen(
     homeViewModel: HomeViewModel = viewModel()
 ) {
     var rutaActual by remember { mutableStateOf("home/{nombre}/{rol}") }
-    val sleepData by homeViewModel.sleepData
+    val sleepData by homeViewModel.sleepData.collectAsState()
+    var showWeightDialog by remember { mutableStateOf(false) }
+    val user by homeViewModel.user.collectAsState()
+    val dynamicHealthTip by homeViewModel.dynamicHealthTip.collectAsState()
+
+    val healthTips = remember(dynamicHealthTip) {
+        val allTips = TipsSalud.toMutableList()
+        dynamicHealthTip?.let { allTips.add(it) }
+        allTips
+    }
+
+    if (showWeightDialog) {
+        WeightInputDialog(
+            onDismiss = { showWeightDialog = false },
+            onSave = { weight ->
+                homeViewModel.updateWeight(weight)
+                showWeightDialog = false
+            }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
@@ -98,7 +120,7 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
-            HealthCarousel()
+            HealthCarousel(healthTips)
             Spacer(modifier = Modifier.height(24.dp))
             SleepChartCard(
                 navController = navController,
@@ -109,7 +131,10 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(16.dp))
             StepsCard()
             Spacer(modifier = Modifier.height(16.dp))
-            WeightCard()
+            WeightCard(
+                onClick = { showWeightDialog = true },
+                weight = user?.pesoActual
+            )
             Spacer(modifier = Modifier.height(16.dp))
             BurnedCaloriesCard()
             Spacer(modifier = Modifier.height(16.dp))
@@ -194,7 +219,7 @@ fun ProfileImage() {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HealthCarousel() {
+fun HealthCarousel(tips: List<TipSalud>) {
     val pageCount = Int.MAX_VALUE
     val initialPage = pageCount / 2
     val pagerState = rememberPagerState(
@@ -208,14 +233,14 @@ fun HealthCarousel() {
             contentPadding = PaddingValues(horizontal = 24.dp),
             modifier = Modifier.height(100.dp)
         ) { page ->
-            val actualIndex = (page - initialPage).mod(TipsSalud.size)
-            
+            val actualIndex = (page - initialPage).mod(tips.size)
+
             Card(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 8.dp),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = TipsSalud[actualIndex].color)
+                colors = CardDefaults.cardColors(containerColor = tips[actualIndex].color)
             ) {
                 Box(
                     modifier = Modifier
@@ -224,7 +249,7 @@ fun HealthCarousel() {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = TipsSalud[actualIndex].message,
+                        text = tips[actualIndex].message,
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Medium
                     )
@@ -232,14 +257,14 @@ fun HealthCarousel() {
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
-        
+
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            repeat(TipsSalud.size) { iteration ->
-                val actualCurrentPage = (pagerState.currentPage - initialPage).mod(TipsSalud.size)
-                
+            repeat(tips.size) { iteration ->
+                val actualCurrentPage = (pagerState.currentPage - initialPage).mod(tips.size)
+
                 val color = if (actualCurrentPage == iteration) Color.DarkGray else Color.LightGray
                 val size = if (actualCurrentPage == iteration) 10.dp else 8.dp
                 Box(
@@ -350,16 +375,19 @@ fun StepsCard() {
     InfoCard(
         icon = Icons.Default.DirectionsWalk,
         title = "Pasos",
-        value = "8,450"
+        value = "8,450",
+        onClick = {}
     )
 }
 
 @Composable
-fun WeightCard() {
+fun WeightCard(onClick: () -> Unit, weight: Float?) {
     InfoCard(
         icon = Icons.Default.Person,
         title = "Peso",
-        value = "60 kg"
+        value = weight?.let { "%.1f kg".format(it) } ?: "N/A",
+        onClick = onClick,
+        showEditIcon = true
     )
 }
 
@@ -368,16 +396,24 @@ fun BurnedCaloriesCard() {
     InfoCard(
         icon = Icons.Default.Whatshot,
         title = "Calorías quemadas",
-        value = "505"
+        value = "505",
+        onClick = {}
     )
 }
 
 @Composable
-fun InfoCard(icon: ImageVector, title: String, value: String) {
+fun InfoCard(
+    icon: ImageVector,
+    title: String,
+    value: String,
+    onClick: () -> Unit,
+    showEditIcon: Boolean = false
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(70.dp),
+            .height(70.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
     ) {
@@ -393,7 +429,63 @@ fun InfoCard(icon: ImageVector, title: String, value: String) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(title, color = Color.DarkGray, fontWeight = FontWeight.Medium)
             }
-            Text(value, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.Black.copy(0.8f))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    value,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.Black.copy(0.8f)
+                )
+                if (showEditIcon) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun WeightInputDialog(onDismiss: () -> Unit, onSave: (Float) -> Unit) {
+    var weight by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Ingresar Peso", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = weight,
+                    onValueChange = { weight = it },
+                    label = { Text("Peso (kg)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row {
+                    Button(onClick = onDismiss) {
+                        Text("Cancelar")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        weight.toFloatOrNull()?.let {
+                            onSave(it)
+                        }
+                    }) {
+                        Text("Guardar")
+                    }
+                }
+            }
         }
     }
 }
