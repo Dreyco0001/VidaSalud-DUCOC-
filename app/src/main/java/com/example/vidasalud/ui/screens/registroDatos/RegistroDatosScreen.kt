@@ -6,10 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,7 +58,7 @@ fun RegistroDatosScreen(
                 navController = navController,
                 nombreUsuario = userName,
                 rolUsuario = userRole,
-                rutaActual = "registro_datos"
+                rutaActual = "registroDatos/{nombre}/{rol}"
             )
         }
     ) { paddingValues ->
@@ -85,9 +84,49 @@ fun RegistroDatosScreen(
             SleepDataEntry()
             Spacer(modifier = Modifier.height(32.dp))
             MacroNutrientTracker()
+            Spacer(modifier = Modifier.height(16.dp))
+            PlanesEjercicioButton(navController, userName, userRole)
         }
     }
 }
+
+@Composable
+fun PlanesEjercicioButton(navController: NavController, nombre: String, rol: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                navController.navigate("catalogo/${nombre}/${rol}")
+            },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F0F0))
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.FitnessCenter,
+                contentDescription = "Planes de ejercicio",
+                tint = Color.Black
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "Ver planes de ejercicio",
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Default.ArrowForwardIos,
+                contentDescription = "Ver planes",
+                tint = Color.Black
+            )
+        }
+    }
+}
+
 
 @Composable
 fun SleepDataEntry(

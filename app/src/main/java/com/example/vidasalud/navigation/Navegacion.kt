@@ -165,17 +165,9 @@ fun AppNavegacion() {
             val rol = entry.arguments?.getString("rol") ?: "cliente"
 
             CatalogoScreen(
+                navController = navController,
                 nombre = nombre,
-                rol = rol,
-                onVerPerfil = { navController.navigate("perfil/$nombre/$rol") },
-                onLogout = {
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
-                onVerCarrito = {
-                    navController.navigate("carrito/${Uri.encode(nombre)}/${Uri.encode(rol)}")
-                }
+                rol = rol
             )
         }
 

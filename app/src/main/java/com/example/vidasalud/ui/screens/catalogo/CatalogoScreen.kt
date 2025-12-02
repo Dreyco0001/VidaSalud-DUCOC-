@@ -3,10 +3,6 @@ package com.example.vidasalud.ui.screens.catalogo
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,17 +11,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.vidasalud.model.Plan
 import com.example.vidasalud.repository.PlanesRepository
+import com.example.vidasalud.ui.screens.compartido.BarraNavegacionPrincipal
 
 @Composable
 fun CatalogoScreen(
+    navController: NavController,
     nombre: String = "Cliente",
     rol: String = "cliente",
-    onVerPerfil: () -> Unit = {},
-    onLogout: () -> Unit = {},
-    onVerCarrito: () -> Unit = {}
 ) {
 
     val repo = remember { PlanesRepository() }
@@ -62,7 +57,11 @@ fun CatalogoScreen(
             )
 
             Button(
-                onClick = onLogout,
+                onClick = {
+                    navController.navigate("login") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
             ) {
                 Text("Cerrar sesión", color = Color.White)
@@ -130,30 +129,11 @@ fun CatalogoScreen(
         }
 
         // ================ FOOTER =====================
-        NavigationBar(
-            containerColor = Color(0xFF03A9F4).copy(alpha = 0.1f)
-        ) {
-
-            NavigationBarItem(
-                selected = false,
-                onClick = onVerPerfil,
-                icon = { Icon(Icons.Default.Person, contentDescription = "Perfil") },
-                label = { Text("Perfil") }
-            )
-
-            NavigationBarItem(
-                selected = false,
-                onClick = onVerCarrito,
-                icon = { Icon(Icons.Default.FitnessCenter, contentDescription = "Planes") },
-                label = { Text("Planes") }
-            )
-
-            NavigationBarItem(
-                selected = false,
-                onClick = { /* animación visual */ },
-                icon = { Icon(Icons.Default.LocalFireDepartment, contentDescription = "Calorías") },
-                label = { Text("Calorías") }
-            )
-        }
+        BarraNavegacionPrincipal(
+            navController = navController,
+            nombreUsuario = nombre,
+            rolUsuario = rol,
+            rutaActual = "registroDatos/{nombre}/{rol}"
+        )
     }
 }
