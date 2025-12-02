@@ -18,7 +18,15 @@ class UsuarioRepository {
     // --------------------------------------------------------------------
     // REGISTRO ORIGINAL (Auth + Firestore)
     // --------------------------------------------------------------------
-    suspend fun registrarUsuario(correo: String, clave: String, nombre: String): Result<Unit> {
+    suspend fun registrarUsuario(
+        correo: String,
+        clave: String,
+        nombre: String,
+        peso: Float,
+        fechaPeso: String,
+        altura: Float,
+        sexo: String
+    ): Result<Unit> {
         return try {
             val authResult = auth.createUserWithEmailAndPassword(correo, clave).await()
             val firebaseUser = authResult.user ?: return Result.failure(Exception("Usuario Firebase nulo."))
@@ -30,7 +38,11 @@ class UsuarioRepository {
                 "clave" to clave,
                 "rol" to "cliente",
                 "fechaRegistro" to getCurrentDate(),
-                "fotoUrl" to null
+                "fotoUrl" to null,
+                "pesoActual" to peso,
+                "fechaPesoActual" to fechaPeso,
+                "estatura" to altura,
+                "sexo" to sexo
             )
 
             db.collection("usuario")

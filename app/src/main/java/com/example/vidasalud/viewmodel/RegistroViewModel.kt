@@ -6,6 +6,9 @@ import com.example.vidasalud.repository.UsuarioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class RegistroViewModel : ViewModel() {
     private val repositorio = UsuarioRepository()
@@ -19,8 +22,16 @@ class RegistroViewModel : ViewModel() {
     private val _errorMensaje = MutableStateFlow("")
     val errorMensaje: StateFlow<String> = _errorMensaje
 
-    fun registroUsuario(correo: String, clave: String, confirmarClave: String, nombre: String) {
-        if (correo.isEmpty() || clave.isEmpty() || confirmarClave.isEmpty() || nombre.isEmpty()) {
+    fun registroUsuario(
+        correo: String,
+        clave: String,
+        confirmarClave: String,
+        nombre: String,
+        peso: String,
+        altura: String,
+        sexo: String
+    ) {
+        if (correo.isEmpty() || clave.isEmpty() || confirmarClave.isEmpty() || nombre.isEmpty() || peso.isEmpty() || altura.isEmpty() || sexo.isEmpty()) {
             _errorMensaje.value = "Todos los campos son obligatorios"
             return
         }
@@ -35,6 +46,21 @@ class RegistroViewModel : ViewModel() {
             return
         }
 
+        val pesoFloat = peso.toFloatOrNull()
+        if (pesoFloat == null) {
+            _errorMensaje.value = "Peso inválido"
+            return
+        }
+
+        val alturaFloat = altura.toFloatOrNull()
+        if (alturaFloat == null) {
+            _errorMensaje.value = "Altura inválida"
+            return
+        }
+        
+        val sexoGuardar = if (sexo == "Masculino") "m" else "f"
+        val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+
         _cargando.value = true
         _errorMensaje.value = ""
 
@@ -43,7 +69,7 @@ class RegistroViewModel : ViewModel() {
             _errorMensaje.value = "" // Limpiar errores previos
 
             // Llamar a la función del repositorio que hemos creado
-            repositorio.registrarUsuario(correo, clave, nombre)
+            repositorio.registrarUsuario(correo, clave, nombre, pesoFloat, fechaActual, alturaFloat, sexoGuardar)
                 .onSuccess {
                     // Si el registro y guardado en Firestore fue exitoso
                     _registroExitoso.value = true
