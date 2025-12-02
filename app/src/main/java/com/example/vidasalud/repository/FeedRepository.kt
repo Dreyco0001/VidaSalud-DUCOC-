@@ -9,33 +9,20 @@ class FeedRepository {
 
     private val db = FirebaseFirestore.getInstance()
     private val comentariosRef = db.collection("feed_comentarios")
-    private val usuariosRef = db.collection("usuario")
 
     // ------------------------------------------------------------------
-    //              OBTENER FOTO DEL USUARIO
-    // ------------------------------------------------------------------
-    suspend fun obtenerFotoUsuario(userId: String): String? {
-        return try {
-            val doc = usuariosRef.document(userId).get().await()
-            doc.getString("fotoUrl")
-        } catch (e: Exception) {
-            null // si falla devolvemos null → VM pone default_profile
-        }
-    }
-
-    // ------------------------------------------------------------------
-    //                       CREAR COMENTARIO
+    //                      CREAR COMENTARIO
     // ------------------------------------------------------------------
     suspend fun enviarComentario(comentario: Comentario): Result<Unit> {
         return try {
-            if (comentario.mensaje.length > 250) {
-                return Result.failure(Exception("El comentario supera los 250 caracteres"))
-            }
 
-            val ref = comentariosRef.add(comentario).await()
+            val nuevoId = comentariosRef.document().id
+            val comentarioConId = comentario.copy(id = nuevoId)
 
-            // 🔥 Actualizamos el ID del comentario (para edición/borrado)
-            ref.update("id", ref.id).await()
+            comentariosRef
+                .document(nuevoId)
+                .set(comentarioConId)
+                .await()
 
             Result.success(Unit)
 
@@ -44,8 +31,9 @@ class FeedRepository {
         }
     }
 
+
     // ------------------------------------------------------------------
-    //                      OBTENER COMENTARIOS
+    //                      CARGAR COMENTARIOS
     // ------------------------------------------------------------------
     suspend fun cargarComentarios(): List<Comentario> {
         return try {
@@ -56,46 +44,32 @@ class FeedRepository {
 
             snap.documents.mapNotNull { doc ->
                 doc.toObject(Comentario::class.java)?.copy(
-                    id = doc.id,
-                    fotoUrl = doc.getString("fotoUrl") ?: "default_profile",
-                    userName = doc.getString("userName") ?: "Usuario"
+                    id = doc.id
                 )
             }
+
         } catch (_: Exception) {
             emptyList()
         }
     }
+
     // ------------------------------------------------------------------
-//              OBTENER COMENTARIO POR ID (USADO EN VIEWMODEL)
-// ------------------------------------------------------------------
+    //                OBTENER COMENTARIO POR ID
+    // ------------------------------------------------------------------
     suspend fun obtenerComentarioPorId(id: String): Comentario? {
         return try {
             val doc = comentariosRef.document(id).get().await()
             if (!doc.exists()) return null
 
-            // Mapear campos con fallback para evitar NPEs
-            val mensaje = doc.getString("mensaje") ?: ""
-            val userId = doc.getString("userId") ?: ""
-            val userName = doc.getString("userName") ?: "Usuario"
-            val fotoUrl = doc.getString("fotoUrl") ?: "default_profile"
-            val timestamp = doc.getLong("timestamp") ?: 0L
+            doc.toObject(Comentario::class.java)?.copy(id = doc.id)
 
-            Comentario(
-                id = doc.id,
-                userId = userId,
-                userName = userName,
-                fotoUrl = fotoUrl,
-                mensaje = mensaje,
-                timestamp = timestamp
-            )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
 
-
     // ------------------------------------------------------------------
-    //                ESCUCHAR CAMBIOS EN TIEMPO REAL
+    //            ESCUCHAR CAMBIOS EN TIEMPO REAL
     // ------------------------------------------------------------------
     fun escucharComentarios(onChange: (List<Comentario>) -> Unit) {
         comentariosRef
@@ -106,11 +80,9 @@ class FeedRepository {
                     return@addSnapshotListener
                 }
 
-                val lista = snap.documents.mapNotNull { doc ->
-                    doc.toObject(Comentario::class.java)?.copy(
-                        id = doc.id,
-                        fotoUrl = doc.getString("fotoUrl") ?: "default_profile",
-                        userName = doc.getString("userName") ?: "Usuario"
+                val lista = snap.documents.mapNotNull { d ->
+                    d.toObject(Comentario::class.java)?.copy(
+                        id = d.id
                     )
                 }
 
@@ -129,12 +101,13 @@ class FeedRepository {
     ): Result<Unit> {
 
         return try {
-            if (nuevoTexto.length > 250) {
-                return Result.failure(Exception("El comentario supera los 250 caracteres"))
-            }
+
+            if (nuevoTexto.length > 250)
+                return Result.failure(Exception("Máximo 250 caracteres."))
 
             val doc = comentariosRef.document(comentarioId).get().await()
-            if (!doc.exists()) return Result.failure(Exception("No existe"))
+            if (!doc.exists())
+                return Result.failure(Exception("No existe el comentario."))
 
             val original = doc.toObject(Comentario::class.java)!!
 
@@ -143,10 +116,10 @@ class FeedRepository {
 
             if (!isAdmin) {
                 if (original.userId != userId)
-                    return Result.failure(Exception("No puedes editar este comentario"))
+                    return Result.failure(Exception("No puedes editar este comentario."))
 
                 if (tiempoPasado > diezMin)
-                    return Result.failure(Exception("Solo puedes editar durante los primeros 10 minutos"))
+                    return Result.failure(Exception("Solo puedes editar dentro de los 10 minutos."))
             }
 
             comentariosRef.document(comentarioId)
@@ -170,14 +143,16 @@ class FeedRepository {
     ): Result<Unit> {
 
         return try {
-            val doc = comentariosRef.document(comentarioId).get().await()
 
-            if (!doc.exists()) return Result.failure(Exception("No existe"))
+            val doc = comentariosRef.document(comentarioId).get().await()
+            if (!doc.exists())
+                return Result.failure(Exception("No existe el comentario."))
 
             val original = doc.toObject(Comentario::class.java)!!
 
+            // admin borra todo — cliente borra solo lo suyo
             if (!isAdmin && original.userId != userId)
-                return Result.failure(Exception("No puedes borrar este comentario"))
+                return Result.failure(Exception("No puedes borrar este comentario."))
 
             comentariosRef.document(comentarioId).delete().await()
 
@@ -187,22 +162,56 @@ class FeedRepository {
             Result.failure(e)
         }
     }
+    //escuchar like
+    fun escucharLikes(comentarioId: String, onChange: (List<Like>) -> Unit) {
+        comentariosRef.document(comentarioId)
+            .collection("likes")
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) {
+                    onChange(emptyList())
+                    return@addSnapshotListener
+                }
+
+                val lista = snap.documents.map { d ->
+                    Like(
+                        userId = d.getString("userId") ?: "",
+                        timestamp = d.getLong("timestamp") ?: 0L
+                    )
+                }
+
+                onChange(lista)
+            }
+    }
+
+
+
+
+
 
     // ------------------------------------------------------------------
-    //                             LIKES
+    //                            LIKES
     // ------------------------------------------------------------------
     suspend fun agregarLike(comentarioId: String, userId: String): Result<Unit> {
         return try {
-            val likeData = mapOf(
-                "userId" to userId,
-                "timestamp" to System.currentTimeMillis()
-            )
-
-            comentariosRef
+            val likeRef = comentariosRef
                 .document(comentarioId)
                 .collection("likes")
-                .add(likeData)
+
+            // validar que no tenga like previo
+            val snap = likeRef
+                .whereEqualTo("userId", userId)
+                .get()
                 .await()
+
+            if (!snap.isEmpty)
+                return Result.failure(Exception("Ya diste like."))
+
+            val data = Like(
+                userId = userId,
+                timestamp = System.currentTimeMillis()
+            )
+
+            likeRef.add(data).await()
 
             Result.success(Unit)
 
@@ -211,16 +220,24 @@ class FeedRepository {
         }
     }
 
-    suspend fun quitarLike(comentarioId: String, likeId: String): Result<Unit> {
+    suspend fun quitarLike(comentarioId: String, userId: String): Result<Unit> {
         return try {
-            comentariosRef
+            val likeRef = comentariosRef
                 .document(comentarioId)
                 .collection("likes")
-                .document(likeId)
-                .delete()
+
+            val snap = likeRef
+                .whereEqualTo("userId", userId)
+                .get()
                 .await()
 
+            if (snap.isEmpty)
+                return Result.failure(Exception("No tienes like en este comentario."))
+
+            snap.documents.first().reference.delete().await()
+
             Result.success(Unit)
+
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -234,9 +251,8 @@ class FeedRepository {
                 .get()
                 .await()
 
-            snap.map { doc ->
+            snap.documents.map { doc ->
                 Like(
-                    id = doc.id,
                     userId = doc.getString("userId") ?: "",
                     timestamp = doc.getLong("timestamp") ?: 0L
                 )

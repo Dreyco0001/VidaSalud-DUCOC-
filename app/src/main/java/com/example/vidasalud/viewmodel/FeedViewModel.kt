@@ -7,6 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.vidasalud.model.Comentario
 import com.example.vidasalud.repository.FeedRepository
 import kotlinx.coroutines.launch
+import java.io.IOException
+import com.google.firebase.firestore.FirebaseFirestoreException
+
 
 class FeedViewModel(
     private val repo: FeedRepository = FeedRepository()
@@ -18,26 +21,68 @@ class FeedViewModel(
     private val _error = MutableLiveData<String?>(null)
     val error: LiveData<String?> get() = _error
 
-    private val _isLoading = MutableLiveData(false)
-    val isLoading: LiveData<Boolean> get() = _isLoading
-
     init {
         escucharCambios()
     }
 
     private fun escucharCambios() {
-        repo.escucharComentarios { lista ->
-            _comentarios.postValue(lista)
+        try {
+            repo.escucharComentarios { lista ->
+                _comentarios.postValue(lista)
+            }
+        } catch (e: Exception) {
+            manejarFirebaseError(e)
         }
     }
 
     // --------------------------------------------------------------
-    // ENVIAR COMENTARIO
+    // 🔥 MANEJADOR REFORZADO DE ERRORES FIREBASE
+    // --------------------------------------------------------------
+    private fun manejarFirebaseError(e: Exception) {
+
+        // Mensaje base
+        var msg = e.message ?: "Error desconocido en Firebase."
+
+        // -----------------------------
+        // 💥 ERRORES DE PERMISOS
+        // -----------------------------
+        if (msg.contains("PERMISSION_DENIED", true) ||
+            msg.contains("insufficient permissions", true)
+        ) {
+            msg = "PERMISOS DENEGADOS — Firebase bloqueó la operación."
+        }
+
+        // -----------------------------
+        // 💥 ERRORES POR userId (cuando Firestore valida request.auth.uid)
+        // -----------------------------
+        if (msg.contains("userId", true) ||
+            msg.contains("uid", true) ||
+            msg.contains("Missing or insufficient permissions", true)
+        ) {
+
+            msg += "\n\n⚠ Posible error por ID.\n" +
+                    "Comparación esperada por Firebase:\n" +
+                    "→ request.resource.data.userId == request.auth.uid\n\n" +
+                    "Ejemplos:\n" +
+                    "• userId enviado desde la app: (revísalo en el objeto Comentario)\n" +
+                    "• userId autenticado en Firebase: FirebaseAuth.getInstance().currentUser?.uid\n\n" +
+                    "Si NO coinciden → comentario no se crea."
+        }
+
+        // Manda el mensaje final
+        _error.postValue(msg)
+        e.printStackTrace()
+    }
+
+
+    // --------------------------------------------------------------
+    // ENVIAR
     // --------------------------------------------------------------
     fun enviarMensaje(
         texto: String,
         userId: String,
-        userName: String
+        userName: String,
+        fotoUrl: String = ""
     ) {
         if (texto.length > 250) {
             _error.value = "Máximo 250 caracteres"
@@ -45,75 +90,52 @@ class FeedViewModel(
         }
 
         viewModelScope.launch {
-            _isLoading.value = true
+            try {
+                val comentario = Comentario(
+                    id = "",
+                    userId = userId,
+                    userName = userName,
+                    mensaje = texto,
+                    fotoUrl = fotoUrl,
+                    timestamp = System.currentTimeMillis()
+                )
 
-            val fotoRemota = repo.obtenerFotoUsuario(userId)
-            val fotoFinal = fotoRemota ?: "default_profile"
+                val result = repo.enviarComentario(comentario)
 
-            val comentario = Comentario(
-                userId = userId,
-                userName = userName,
-                fotoUrl = fotoFinal,
-                mensaje = texto,
-                timestamp = System.currentTimeMillis()
-            )
+                if (result.isFailure) {
+                    manejarFirebaseError((result.exceptionOrNull() ?: Exception("Fallo desconocido.")) as Exception)
+                }
 
-            val result = repo.enviarComentario(comentario)
-
-            if (result.isFailure) {
-                _error.value = result.exceptionOrNull()?.message
+            } catch (e: Exception) {
+                manejarFirebaseError(e)
             }
-
-            _isLoading.value = false
         }
     }
 
     // --------------------------------------------------------------
-    // EDITAR COMENTARIO (CON REGLAS)
+    // EDITAR
     // --------------------------------------------------------------
     fun editarComentario(
         comentarioId: String,
-        nuevoTexto: String,
+        nuevoMensaje: String,
         userId: String,
-        isAdmin: Boolean
+        isAdmin: Boolean = false
     ) {
-        if (nuevoTexto.length > 250) {
+        if (nuevoMensaje.length > 250) {
             _error.value = "Máximo 250 caracteres"
             return
         }
 
         viewModelScope.launch {
-            val comentario = repo.obtenerComentarioPorId(comentarioId)
-            if (comentario == null) {
-                _error.value = "Comentario no encontrado"
-                return@launch
-            }
+            try {
+                val result = repo.editarComentario(comentarioId, nuevoMensaje, userId, isAdmin)
 
-            val esCreador = comentario.userId == userId
-            val tiempoPasado = System.currentTimeMillis() - comentario.timestamp
-            val limiteEdicion = 10 * 60 * 1000L // 10 min
-
-            if (!isAdmin) {
-                if (!esCreador) {
-                    _error.value = "Solo el creador del comentario puede editarlo"
-                    return@launch
+                if (result.isFailure) {
+                    manejarFirebaseError((result.exceptionOrNull() ?: Exception("Error al editar.")) as Exception)
                 }
 
-                if (tiempoPasado > limiteEdicion) {
-                    _error.value = "Solo puedes editar dentro de los primeros 10 minutos"
-                    return@launch
-                }
-            }
-
-            val result = repo.editarComentario(
-                comentarioId,
-                nuevoTexto,
-                userId,
-                isAdmin
-            )
-
-            if (result.isFailure) {
-                _error.value = result.exceptionOrNull()?.message
+            } catch (e: Exception) {
+                manejarFirebaseError(e)
             }
         }
     }
@@ -127,35 +149,48 @@ class FeedViewModel(
         isAdmin: Boolean
     ) {
         viewModelScope.launch {
-            val result = repo.eliminarComentario(
-                comentarioId,
-                userId,
-                isAdmin
-            )
+            try {
+                val result = repo.eliminarComentario(comentarioId, userId, isAdmin)
 
-            if (result.isFailure) {
-                _error.value = result.exceptionOrNull()?.message
+                if (result.isFailure) {
+                    manejarFirebaseError((result.exceptionOrNull() ?: Exception("Error al eliminar.")) as Exception)
+                }
+
+            } catch (e: Exception) {
+                manejarFirebaseError(e)
             }
         }
     }
 
     // --------------------------------------------------------------
-    // LIKE / UNLIKE
+    // LIKE
     // --------------------------------------------------------------
     fun toggleLike(comentarioId: String, userId: String) {
         viewModelScope.launch {
-            val likes = repo.obtenerLikes(comentarioId)
-            val likeExistente = likes.find { it.userId == userId }
+            try {
+                val likes = repo.obtenerLikes(comentarioId)
+                val existe = likes.any { it.userId == userId }
 
-            if (likeExistente == null) {
-                repo.agregarLike(comentarioId, userId)
-            } else {
-                repo.quitarLike(comentarioId, likeExistente.id)
+                if (!existe) {
+                    val r = repo.agregarLike(comentarioId, userId)
+                    if (r.isFailure) manejarFirebaseError(r.exceptionOrNull()!! as Exception)
+                } else {
+                    val r = repo.quitarLike(comentarioId, userId)
+                    if (r.isFailure) manejarFirebaseError(r.exceptionOrNull()!! as Exception)
+                }
+
+            } catch (e: Exception) {
+                manejarFirebaseError(e)
             }
         }
     }
 
     suspend fun getLikes(comentarioId: String): Int {
-        return repo.obtenerLikes(comentarioId).size
+        return try {
+            repo.obtenerLikes(comentarioId).size
+        } catch (e: Exception) {
+            manejarFirebaseError(e)
+            0
+        }
     }
 }
