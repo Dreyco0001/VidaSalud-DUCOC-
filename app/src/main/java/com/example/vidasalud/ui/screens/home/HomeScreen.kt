@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -70,6 +71,7 @@ fun HomeScreen(
     var rutaActual by remember { mutableStateOf("home/{nombre}/{rol}") }
     val sleepData by homeViewModel.sleepData.collectAsState()
     var showWeightDialog by remember { mutableStateOf(false) }
+    var showHeightDialog by remember { mutableStateOf(false) }
     val user by homeViewModel.user.collectAsState()
     val dynamicHealthTip by homeViewModel.dynamicHealthTip.collectAsState()
 
@@ -85,6 +87,16 @@ fun HomeScreen(
             onSave = { weight ->
                 homeViewModel.updateWeight(weight)
                 showWeightDialog = false
+            }
+        )
+    }
+
+    if (showHeightDialog) {
+        HeightInputDialog(
+            onDismiss = { showHeightDialog = false },
+            onSave = { height ->
+                homeViewModel.updateHeight(height)
+                showHeightDialog = false
             }
         )
     }
@@ -120,8 +132,8 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
-            HealthCarousel(healthTips)
-            Spacer(modifier = Modifier.height(24.dp))
+            HealthCarousel(tips = healthTips)
+            Spacer(modifier = Modifier.height(16.dp))
             SleepChartCard(
                 navController = navController,
                 sleepData = sleepData,
@@ -134,6 +146,11 @@ fun HomeScreen(
             WeightCard(
                 onClick = { showWeightDialog = true },
                 weight = user?.pesoActual
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            HeightCard(
+                onClick = { showHeightDialog = true },
+                height = user?.estatura
             )
             Spacer(modifier = Modifier.height(16.dp))
             BurnedCaloriesCard()
@@ -216,6 +233,32 @@ fun ProfileImage() {
     }
 }
 
+@Composable
+private fun AutoSizeText(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign? = null,
+    fontWeight: FontWeight? = null,
+    style: TextStyle = LocalTextStyle.current,
+    maxLines: Int = 4 // Limit to 4 lines
+) {
+    var textStyle by remember(text) { mutableStateOf(style) }
+
+    Text(
+        text = text,
+        modifier = modifier,
+        textAlign = textAlign,
+        fontWeight = fontWeight,
+        style = textStyle,
+        maxLines = maxLines,
+        onTextLayout = { textLayoutResult ->
+            if (textLayoutResult.hasVisualOverflow) {
+                textStyle = textStyle.copy(fontSize = textStyle.fontSize * 0.95f)
+            }
+        }
+    )
+}
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -231,7 +274,7 @@ fun HealthCarousel(tips: List<TipSalud>) {
         HorizontalPager(
             state = pagerState,
             contentPadding = PaddingValues(horizontal = 24.dp),
-            modifier = Modifier.height(100.dp)
+            modifier = Modifier.height(80.dp) // Altura reducida
         ) { page ->
             val actualIndex = (page - initialPage).mod(tips.size)
 
@@ -248,7 +291,7 @@ fun HealthCarousel(tips: List<TipSalud>) {
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
+                    AutoSizeText(
                         text = tips[actualIndex].message,
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Medium
@@ -306,7 +349,7 @@ fun SleepChartCard(navController: NavController, sleepData: List<Float>, userNam
 @Composable
 fun SleepChart(sleepData: List<Float>) {
     if (sleepData.isEmpty()) {
-        Box(modifier = Modifier.height(150.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.height(120.dp).fillMaxWidth(), contentAlignment = Alignment.Center) { // Altura reducida
             Text("No hay datos de sueño disponibles.")
         }
         return
@@ -328,7 +371,7 @@ fun SleepChart(sleepData: List<Float>) {
         }
     }
 
-    Box(modifier = Modifier.height(150.dp).fillMaxWidth()) {
+    Box(modifier = Modifier.height(120.dp).fillMaxWidth()) { // Altura reducida
         Canvas(modifier = Modifier.fillMaxSize()) {
             val maxHours = sleepData.maxOrNull() ?: 1f
             val spacing = size.width / (sleepData.size - 1)
@@ -386,6 +429,17 @@ fun WeightCard(onClick: () -> Unit, weight: Float?) {
         icon = Icons.Default.Person,
         title = "Peso",
         value = weight?.let { "%.1f kg".format(it) } ?: "N/A",
+        onClick = onClick,
+        showEditIcon = true
+    )
+}
+
+@Composable
+fun HeightCard(onClick: () -> Unit, height: Float?) {
+    InfoCard(
+        icon = Icons.Default.Straighten,
+        title = "Estatura",
+        value = height?.let { "%.0f cm".format(it) } ?: "N/A",
         onClick = onClick,
         showEditIcon = true
     )
@@ -479,6 +533,46 @@ fun WeightInputDialog(onDismiss: () -> Unit, onSave: (Float) -> Unit) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = {
                         weight.toFloatOrNull()?.let {
+                            onSave(it)
+                        }
+                    }) {
+                        Text("Guardar")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HeightInputDialog(onDismiss: () -> Unit, onSave: (Float) -> Unit) {
+    var height by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Ingresar Estatura", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = height,
+                    onValueChange = { height = it },
+                    label = { Text("Estatura (cm)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row {
+                    Button(onClick = onDismiss) {
+                        Text("Cancelar")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        height.toFloatOrNull()?.let {
                             onSave(it)
                         }
                     }) {

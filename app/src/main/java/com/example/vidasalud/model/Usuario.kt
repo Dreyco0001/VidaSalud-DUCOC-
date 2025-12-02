@@ -15,5 +15,6 @@ data class Usuario(
     val pesoAnteanterior: Float? = null,
     val fechaPesoActual: String? = null,
     val fechaPesoAnterior: String? = null,
-    val fechaPesoAnteanterior: String? = null
+    val fechaPesoAnteanterior: String? = null,
+    val estatura: Float? = null
 )
