@@ -253,6 +253,20 @@ class UsuarioRepository {
     }
 
     // --------------------------------------------------------------------
+    // ACTUALIZAR ESTATURA
+    // --------------------------------------------------------------------
+    suspend fun updateHeight(userId: String, newHeight: Float): Result<Unit> {
+        return try {
+            val userRef = db.collection("usuario").document(userId)
+            userRef.update("estatura", newHeight).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
+    // --------------------------------------------------------------------
     // FECHA
     // --------------------------------------------------------------------
     private fun getCurrentDate(): String {

@@ -145,4 +145,13 @@ class HomeViewModel : ViewModel() {
             }
         }
     }
+
+    fun updateHeight(height: Float) {
+        viewModelScope.launch {
+            val userId = auth.currentUser?.uid
+            if (userId != null) {
+                usuarioRepository.updateHeight(userId, height)
+            }
+        }
+    }
 }
