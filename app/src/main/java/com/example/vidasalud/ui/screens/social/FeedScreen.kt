@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vidasalud.model.Comentario
 import com.example.vidasalud.viewmodel.FeedViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.ListenerRegistration
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -29,7 +30,8 @@ import java.util.*
 fun FeedScreen(
     feedViewModel: FeedViewModel = viewModel(),
     currentUserName: String = "Invitado",
-    currentIsAdmin: Boolean = false
+    currentIsAdmin: Boolean = false,
+    onBack: () -> Unit = {}
 ) {
     val comentarios by feedViewModel.comentarios.observeAsState(emptyList())
     val error by feedViewModel.error.observeAsState()
@@ -39,7 +41,6 @@ fun FeedScreen(
     var textoEditado by remember { mutableStateOf("") }
 
     val snackbarHostState = remember { SnackbarHostState() }
-
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     LaunchedEffect(error) {
@@ -47,15 +48,26 @@ fun FeedScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Comunidad") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Comunidad") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                    }
+                }
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
         ) {
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -64,7 +76,10 @@ fun FeedScreen(
             ) {
                 items(comentarios.sortedByDescending { it.timestamp }) { comentario ->
 
-                    val canEdit = currentIsAdmin || puedeEditarLocal(comentario, currentUserId, currentIsAdmin)
+                    val canEdit = currentIsAdmin ||
+                            (comentario.userId == currentUserId &&
+                                    puedeEditarLocal(comentario, currentUserId, currentIsAdmin))
+
                     val canDelete = currentIsAdmin || comentario.userId == currentUserId
 
                     ChatItem(
@@ -72,7 +87,9 @@ fun FeedScreen(
                         canEdit = canEdit,
                         canDelete = canDelete,
                         currentUserId = currentUserId,
-                        onDelete = { feedViewModel.eliminarComentario(comentario.id, currentIsAdmin) },
+                        onDelete = {
+                            feedViewModel.eliminarComentario(comentario.id, currentIsAdmin)
+                        },
                         onEdit = {
                             comentarioEditar = comentario
                             textoEditado = comentario.mensaje
@@ -86,16 +103,13 @@ fun FeedScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+
                 OutlinedTextField(
                     value = mensaje,
                     onValueChange = { mensaje = it.take(250) },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Escribe un mensaje…") },
-                    shape = CircleShape,
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    )
+                    shape = CircleShape
                 )
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -114,7 +128,11 @@ fun FeedScreen(
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary)
                 ) {
-                    Icon(Icons.Filled.Send, "Enviar", tint = MaterialTheme.colorScheme.onPrimary)
+                    Icon(
+                        Icons.Default.Send,
+                        contentDescription = "Enviar",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
                 }
             }
         }
@@ -127,14 +145,20 @@ fun FeedScreen(
                 TextButton(
                     onClick = {
                         comentarioEditar?.let {
-                            feedViewModel.editarComentario(it.id, textoEditado.trim(), currentIsAdmin)
+                            feedViewModel.editarComentario(
+                                it.id,
+                                textoEditado.trim(),
+                                currentIsAdmin
+                            )
                         }
                         comentarioEditar = null
                     }
                 ) { Text("Guardar") }
             },
             dismissButton = {
-                TextButton(onClick = { comentarioEditar = null }) { Text("Cancelar") }
+                TextButton(onClick = { comentarioEditar = null }) {
+                    Text("Cancelar")
+                }
             },
             title = { Text("Editar comentario") },
             text = {
@@ -148,6 +172,7 @@ fun FeedScreen(
     }
 }
 
+
 @Composable
 fun ChatItem(
     comentario: Comentario,
@@ -159,22 +184,41 @@ fun ChatItem(
     onLike: () -> Unit,
     viewModel: FeedViewModel
 ) {
-    val fecha = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(comentario.timestamp))
-    var likeCount by remember { mutableStateOf(0) }
+    val fecha = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
+        .format(Date(comentario.timestamp))
 
-    LaunchedEffect(comentario.id) {
-        likeCount = viewModel.getLikes(comentario.id)
+    var likeCount by remember { mutableStateOf(0) }
+    var listener by remember { mutableStateOf<ListenerRegistration?>(null) }
+
+    DisposableEffect(comentario.id) {
+
+        listener = viewModel.repoPublic.escucharLikes(comentario.id) { likes ->
+            likeCount = likes.size
+        }
+
+        onDispose {
+            listener?.remove()
+        }
     }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+    ) {
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(comentario.userName, fontSize = 14.sp, modifier = Modifier.weight(1f))
 
-            if (canEdit) IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, "Editar", tint = MaterialTheme.colorScheme.primary) }
-            if (canDelete) IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, "Eliminar", tint = Color.Red) }
+            if (canEdit)
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.primary)
+                }
+
+            if (canDelete)
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red)
+                }
         }
 
         Box(
@@ -192,12 +236,13 @@ fun ChatItem(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onLike) {
-                Icon(Icons.Default.Favorite, "Like", tint = Color.Red)
+                Icon(Icons.Default.Favorite, contentDescription = "Like", tint = Color.Red)
             }
             Text("$likeCount likes", fontSize = 12.sp)
         }
     }
 }
+
 
 fun puedeEditarLocal(c: Comentario, userId: String, isAdmin: Boolean): Boolean {
     if (isAdmin) return true

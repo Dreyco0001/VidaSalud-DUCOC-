@@ -3,6 +3,7 @@ package com.example.vidasalud.repository
 import com.example.vidasalud.model.Comentario
 import com.example.vidasalud.model.Like
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.tasks.await
 
 class FeedRepository {
@@ -31,7 +32,6 @@ class FeedRepository {
         }
     }
 
-
     // ------------------------------------------------------------------
     //                      CARGAR COMENTARIOS
     // ------------------------------------------------------------------
@@ -43,9 +43,7 @@ class FeedRepository {
                 .await()
 
             snap.documents.mapNotNull { doc ->
-                doc.toObject(Comentario::class.java)?.copy(
-                    id = doc.id
-                )
+                doc.toObject(Comentario::class.java)?.copy(id = doc.id)
             }
 
         } catch (_: Exception) {
@@ -81,9 +79,7 @@ class FeedRepository {
                 }
 
                 val lista = snap.documents.mapNotNull { d ->
-                    d.toObject(Comentario::class.java)?.copy(
-                        id = d.id
-                    )
+                    d.toObject(Comentario::class.java)?.copy(id = d.id)
                 }
 
                 onChange(lista)
@@ -114,6 +110,7 @@ class FeedRepository {
             val diezMin = 10 * 60 * 1000
             val tiempoPasado = System.currentTimeMillis() - original.timestamp
 
+            // 🔥 ADMIN = libertad total
             if (!isAdmin) {
                 if (original.userId != userId)
                     return Result.failure(Exception("No puedes editar este comentario."))
@@ -150,7 +147,7 @@ class FeedRepository {
 
             val original = doc.toObject(Comentario::class.java)!!
 
-            // admin borra todo — cliente borra solo lo suyo
+            // 🔥 ADMIN BORRA TODO LO QUE QUIERA
             if (!isAdmin && original.userId != userId)
                 return Result.failure(Exception("No puedes borrar este comentario."))
 
@@ -162,9 +159,17 @@ class FeedRepository {
             Result.failure(e)
         }
     }
-    //escuchar like
-    fun escucharLikes(comentarioId: String, onChange: (List<Like>) -> Unit) {
-        comentariosRef.document(comentarioId)
+
+    // ------------------------------------------------------------------
+    //      ESCUCHAR LIKES EN TIEMPO REAL (FUNCIONA PERFECTO)
+    // ------------------------------------------------------------------
+    fun escucharLikes(
+        comentarioId: String,
+        onChange: (List<Like>) -> Unit
+    ): ListenerRegistration {
+
+        return comentariosRef
+            .document(comentarioId)
             .collection("likes")
             .addSnapshotListener { snap, error ->
                 if (error != null || snap == null) {
@@ -172,10 +177,10 @@ class FeedRepository {
                     return@addSnapshotListener
                 }
 
-                val lista = snap.documents.map { d ->
+                val lista = snap.documents.map { doc ->
                     Like(
-                        userId = d.getString("userId") ?: "",
-                        timestamp = d.getLong("timestamp") ?: 0L
+                        userId = doc.getString("userId") ?: "",
+                        timestamp = doc.getLong("timestamp") ?: 0L
                     )
                 }
 
@@ -185,11 +190,8 @@ class FeedRepository {
 
 
 
-
-
-
     // ------------------------------------------------------------------
-    //                            LIKES
+    //                          LIKES
     // ------------------------------------------------------------------
     suspend fun agregarLike(comentarioId: String, userId: String): Result<Unit> {
         return try {
@@ -197,7 +199,6 @@ class FeedRepository {
                 .document(comentarioId)
                 .collection("likes")
 
-            // validar que no tenga like previo
             val snap = likeRef
                 .whereEqualTo("userId", userId)
                 .get()
@@ -212,13 +213,13 @@ class FeedRepository {
             )
 
             likeRef.add(data).await()
-
             Result.success(Unit)
 
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
 
     suspend fun quitarLike(comentarioId: String, userId: String): Result<Unit> {
         return try {
@@ -235,13 +236,13 @@ class FeedRepository {
                 return Result.failure(Exception("No tienes like en este comentario."))
 
             snap.documents.first().reference.delete().await()
-
             Result.success(Unit)
 
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
 
     suspend fun obtenerLikes(comentarioId: String): List<Like> {
         return try {

@@ -5,61 +5,95 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vidasalud.model.Comentario
+import com.example.vidasalud.model.Like
 import com.example.vidasalud.repository.FeedRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.launch
-import com.google.firebase.firestore.FirebaseFirestoreException
 
 class FeedViewModel(
-    private val repo: FeedRepository = FeedRepository()
+    val repo: FeedRepository = FeedRepository()
 ) : ViewModel() {
 
+    // --------------------------------------------------------------
+    //  LIVE DATA
+    // --------------------------------------------------------------
     private val _comentarios = MutableLiveData<List<Comentario>>(emptyList())
     val comentarios: LiveData<List<Comentario>> get() = _comentarios
+
+    private val likesMap = mutableMapOf<String, Int>()
+    private val _likesLive = MutableLiveData<Map<String, Int>>()
+    val likesLive: LiveData<Map<String, Int>> get() = _likesLive
 
     private val _error = MutableLiveData<String?>(null)
     val error: LiveData<String?> get() = _error
 
+
+    // --------------------------------------------------------------
+    //  LISTENERES DE LIKES
+    // --------------------------------------------------------------
+    private val likeListeners = mutableMapOf<String, ListenerRegistration>()
+
+
     init {
-        escucharCambios()
+        escucharComentarios()
     }
 
-    private fun escucharCambios() {
-        try {
-            repo.escucharComentarios { lista ->
-                _comentarios.postValue(lista)
+
+    // --------------------------------------------------------------
+    // ESCUCHAR COMENTARIOS EN TIEMPO REAL
+    // --------------------------------------------------------------
+    private fun escucharComentarios() {
+        repo.escucharComentarios { lista ->
+
+            _comentarios.postValue(lista)
+
+            lista.forEach { comentario ->
+
+                // evita duplicar listeners
+                if (!likeListeners.containsKey(comentario.id)) {
+                    escucharLikesComentario(comentario.id)
+                }
             }
-        } catch (e: Exception) {
-            manejarFirebaseError(e)
         }
     }
 
     // --------------------------------------------------------------
-    // 🔥 MANEJADOR COMPLETO DE ERRORES FIREBASE
+    // ESCUCHAR LIKES EN TIEMPO REAL POR COMENTARIO
     // --------------------------------------------------------------
-    private fun manejarFirebaseError(e: Exception, userIdEnviado: String = "") {
-        val authUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "No autenticado"
-        val msgBase = e.message ?: "Error desconocido en Firebase."
+    private fun escucharLikesComentario(comentarioId: String) {
 
-        // Construimos el mensaje final
+        // si había un listener viejo → lo saco
+        likeListeners[comentarioId]?.remove()
+
+        val listener: ListenerRegistration = repo.escucharLikes(comentarioId) { listaLikes ->
+
+            likesMap[comentarioId] = listaLikes.size
+            _likesLive.postValue(likesMap.toMap())
+        }
+
+        likeListeners[comentarioId] = listener
+    }
+
+
+    // --------------------------------------------------------------
+    // MANEJO DE ERRORES
+    // --------------------------------------------------------------
+    private fun manejarFirebaseError(e: Exception, userIdEnviado: String? = "") {
+        val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: "No autenticado"
+
         val msg = """
 🔥 Firebase bloqueó la operación
+${e.message}
 
-🔎 Mensaje original:
-$msgBase
-
-⚠ Comparación de IDs requerida por Firestore:
+⚠ Firestore exige:
 request.resource.data.userId == request.auth.uid
 
-Ejemplo:
-• userId enviado desde tu app: $userIdEnviado
-• auth.uid real del usuario: $authUid
-
-Si NO coinciden → Firestore devuelve PERMISSION_DENIED.
+• userId enviado: $userIdEnviado
+• auth.uid real: $authUid
 """.trimIndent()
 
         _error.postValue(msg)
-        e.printStackTrace()
     }
 
 
@@ -71,8 +105,7 @@ Si NO coinciden → Firestore devuelve PERMISSION_DENIED.
         userName: String,
         fotoUrl: String = ""
     ) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-        if (uid.isNullOrEmpty()) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: run {
             _error.value = "Usuario no autenticado"
             return
         }
@@ -86,17 +119,15 @@ Si NO coinciden → Firestore devuelve PERMISSION_DENIED.
             try {
                 val comentario = Comentario(
                     id = "",
-                    userId = uid, // UID seguro desde FirebaseAuth
+                    userId = uid,
                     userName = userName,
                     mensaje = texto,
                     fotoUrl = fotoUrl,
                     timestamp = System.currentTimeMillis()
                 )
 
-                val result = repo.enviarComentario(comentario)
-                if (result.isFailure) {
-                    manejarFirebaseError(result.exceptionOrNull()!! as Exception)
-                }
+                val r = repo.enviarComentario(comentario)
+                if (r.isFailure) manejarFirebaseError(r.exceptionOrNull()!! as Exception)
 
             } catch (e: Exception) {
                 manejarFirebaseError(e)
@@ -106,55 +137,40 @@ Si NO coinciden → Firestore devuelve PERMISSION_DENIED.
 
 
     // --------------------------------------------------------------
-    // EDITAR COMENTARIO
+    // EDITAR
     // --------------------------------------------------------------
-    fun editarComentario(
-        comentarioId: String,
-        nuevoMensaje: String,
-        isAdmin: Boolean = false
-    ) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-        if (uid.isNullOrEmpty()) {
+    fun editarComentario(comentarioId: String, nuevoMensaje: String, isAdmin: Boolean = false) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: run {
             _error.value = "Usuario no autenticado"
-            return
-        }
-
-        if (nuevoMensaje.length > 250) {
-            _error.value = "Máximo 250 caracteres."
             return
         }
 
         viewModelScope.launch {
             try {
-                val result = repo.editarComentario(comentarioId, nuevoMensaje, uid, isAdmin)
-                if (result.isFailure) {
-                    manejarFirebaseError(result.exceptionOrNull()!! as Exception, uid)
-                }
+                val r = repo.editarComentario(comentarioId, nuevoMensaje, uid, isAdmin)
+                if (r.isFailure) manejarFirebaseError(r.exceptionOrNull()!! as Exception, uid)
+
             } catch (e: Exception) {
                 manejarFirebaseError(e)
             }
         }
     }
 
+
     // --------------------------------------------------------------
-    // ELIMINAR COMENTARIO
+    // ELIMINAR
     // --------------------------------------------------------------
-    fun eliminarComentario(
-        comentarioId: String,
-        isAdmin: Boolean = false
-    ) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-        if (uid.isNullOrEmpty()) {
+    fun eliminarComentario(comentarioId: String, isAdmin: Boolean = false) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: run {
             _error.value = "Usuario no autenticado"
             return
         }
 
         viewModelScope.launch {
             try {
-                val result = repo.eliminarComentario(comentarioId, uid, isAdmin)
-                if (result.isFailure) {
-                    manejarFirebaseError(result.exceptionOrNull()!! as Exception, uid)
-                }
+                val r = repo.eliminarComentario(comentarioId, uid, isAdmin)
+                if (r.isFailure) manejarFirebaseError(r.exceptionOrNull()!! as Exception, uid)
+
             } catch (e: Exception) {
                 manejarFirebaseError(e)
             }
@@ -166,8 +182,7 @@ Si NO coinciden → Firestore devuelve PERMISSION_DENIED.
     // LIKE / UNLIKE
     // --------------------------------------------------------------
     fun toggleLike(comentarioId: String) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-        if (uid.isNullOrEmpty()) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: run {
             _error.value = "Usuario no autenticado"
             return
         }
@@ -175,9 +190,9 @@ Si NO coinciden → Firestore devuelve PERMISSION_DENIED.
         viewModelScope.launch {
             try {
                 val likes = repo.obtenerLikes(comentarioId)
-                val existe = likes.any { it.userId == uid }
+                val tieneLike = likes.any { it.userId == uid }
 
-                if (!existe) {
+                if (!tieneLike) {
                     val r = repo.agregarLike(comentarioId, uid)
                     if (r.isFailure) manejarFirebaseError(r.exceptionOrNull()!! as Exception, uid)
                 } else {
@@ -186,17 +201,22 @@ Si NO coinciden → Firestore devuelve PERMISSION_DENIED.
                 }
 
             } catch (e: Exception) {
-                manejarFirebaseError(e)
+                manejarFirebaseError(e, uid)
             }
         }
     }
 
-    suspend fun getLikes(comentarioId: String): Int {
-        return try {
-            repo.obtenerLikes(comentarioId).size
-        } catch (e: Exception) {
-            manejarFirebaseError(e)
-            0
-        }
+
+    // EXPONER REPO (si lo necesitas)
+    val repoPublic get() = repo
+
+
+    // --------------------------------------------------------------
+    // LIMPIEZA
+    // --------------------------------------------------------------
+    override fun onCleared() {
+        super.onCleared()
+        likeListeners.values.forEach { it.remove() }
+        likeListeners.clear()
     }
 }

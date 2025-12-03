@@ -82,9 +82,20 @@ fun AppNavegacion() {
                 navArgument("nombre") { type = NavType.StringType },
                 navArgument("rol") { type = NavType.StringType }
             )
-        ) {
-            FeedScreen()
+        ) { entry ->
+
+            val nombre = entry.arguments?.getString("nombre") ?: "Invitado"
+            val rol = entry.arguments?.getString("rol") ?: "cliente"
+
+            FeedScreen(
+                currentUserName = nombre,
+                currentIsAdmin = rol == "admin",
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
         }
+
 
 
         // REGISTRO
