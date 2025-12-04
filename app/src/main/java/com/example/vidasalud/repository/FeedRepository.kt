@@ -6,7 +6,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.tasks.await
 
-class FeedRepository {
+open class FeedRepository {
 
     private val db = FirebaseFirestore.getInstance()
     private val comentariosRef = db.collection("feed_comentarios")
@@ -14,7 +14,7 @@ class FeedRepository {
     // ------------------------------------------------------------------
     //                      CREAR COMENTARIO
     // ------------------------------------------------------------------
-    suspend fun enviarComentario(comentario: Comentario): Result<Unit> {
+    open suspend fun enviarComentario(comentario: Comentario): Result<Unit> {
         return try {
 
             val nuevoId = comentariosRef.document().id
@@ -69,7 +69,7 @@ class FeedRepository {
     // ------------------------------------------------------------------
     //            ESCUCHAR CAMBIOS EN TIEMPO REAL
     // ------------------------------------------------------------------
-    fun escucharComentarios(onChange: (List<Comentario>) -> Unit) {
+    open fun escucharComentarios(onChange: (List<Comentario>) -> Unit) {
         comentariosRef
             .orderBy("timestamp")
             .addSnapshotListener { snap, error ->
@@ -163,7 +163,7 @@ class FeedRepository {
     // ------------------------------------------------------------------
     //      ESCUCHAR LIKES EN TIEMPO REAL (FUNCIONA PERFECTO)
     // ------------------------------------------------------------------
-    fun escucharLikes(
+    open fun escucharLikes(
         comentarioId: String,
         onChange: (List<Like>) -> Unit
     ): ListenerRegistration {
@@ -193,7 +193,7 @@ class FeedRepository {
     // ------------------------------------------------------------------
     //                          LIKES
     // ------------------------------------------------------------------
-    suspend fun agregarLike(comentarioId: String, userId: String): Result<Unit> {
+    open suspend fun agregarLike(comentarioId: String, userId: String): Result<Unit> {
         return try {
             val likeRef = comentariosRef
                 .document(comentarioId)
@@ -221,7 +221,7 @@ class FeedRepository {
     }
 
 
-    suspend fun quitarLike(comentarioId: String, userId: String): Result<Unit> {
+    open suspend fun quitarLike(comentarioId: String, userId: String): Result<Unit> {
         return try {
             val likeRef = comentariosRef
                 .document(comentarioId)
@@ -244,7 +244,7 @@ class FeedRepository {
     }
 
 
-    suspend fun obtenerLikes(comentarioId: String): List<Like> {
+    open suspend fun obtenerLikes(comentarioId: String): List<Like> {
         return try {
             val snap = comentariosRef
                 .document(comentarioId)
