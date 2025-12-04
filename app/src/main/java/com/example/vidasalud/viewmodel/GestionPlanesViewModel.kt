@@ -1,5 +1,6 @@
 package com.example.vidasalud.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vidasalud.model.Plan
@@ -124,6 +125,9 @@ class GestionPlanesViewModel(
             }
         }
     }
+
+
+
 
     fun eliminarPlan(id: String) {
         viewModelScope.launch {
