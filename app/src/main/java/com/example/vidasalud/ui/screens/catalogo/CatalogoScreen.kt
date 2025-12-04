@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -81,6 +84,9 @@ fun CatalogoScreen(
     nombre: String = "Cliente",
     rol: String = "cliente",
 ) {
+    // --- ESTADO PARA CONTROLAR EL DIÁLOGO ---
+    var showDialog by remember { mutableStateOf(false) }
+    var selectedActivity by remember { mutableStateOf<Actividad?>(null) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -121,9 +127,12 @@ fun CatalogoScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // 3. Itera sobre la lista de actividades para crear cada tarjeta
+            // 3. Itera sobre la lista de actividades y pasa la función para abrir el diálogo
             items(listaDeActividades) { actividad ->
-                ActivityCard(actividad = actividad)
+                ActivityCard(actividad = actividad, onReserveClick = {
+                    selectedActivity = it
+                    showDialog = true
+                })
             }
         }
 
@@ -135,11 +144,24 @@ fun CatalogoScreen(
             rutaActual = "catalogo/{nombre}/{rol}"
         )
     }
+
+    // --- DIÁLOGO DE CONFIRMACIÓN ---
+    if (showDialog && selectedActivity != null) {
+        ReservationDialog(
+            activityName = selectedActivity!!.nombre,
+            onDismiss = { showDialog = false },
+            onConfirm = { quantity ->
+                // Aquí puedes añadir la lógica para manejar la confirmación
+                // Ejemplo: Toast.makeText(context, "Reservaste $quantity clases de ${selectedActivity!!.nombre}", Toast.LENGTH_SHORT).show()
+                showDialog = false
+            }
+        )
+    }
 }
 
-// 4. Función reutilizable para dibujar cada tarjeta de actividad (con precio)
+// 4. Función reutilizable para dibujar cada tarjeta de actividad
 @Composable
-fun ActivityCard(actividad: Actividad) {
+fun ActivityCard(actividad: Actividad, onReserveClick: (Actividad) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth(),
@@ -175,7 +197,7 @@ fun ActivityCard(actividad: Actividad) {
                         color = MaterialTheme.colorScheme.primary
                     )
                     Button(
-                        onClick = { /* Lógica para reservar */ },
+                        onClick = { onReserveClick(actividad) }, // Llama a la función al hacer clic
                         modifier = Modifier.align(Alignment.CenterEnd)
                     ) {
                         Text("Reservar")
@@ -184,4 +206,58 @@ fun ActivityCard(actividad: Actividad) {
             }
         }
     }
+}
+
+// 5. Composable para el diálogo de reserva con selector de cantidad
+@Composable
+fun ReservationDialog(activityName: String, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
+    var quantity by remember { mutableStateOf(1) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "Reservar: $activityName")
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("¿Cuántas clases deseas reservar?")
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    IconButton(
+                        onClick = { if (quantity > 1) quantity-- },
+                        enabled = quantity > 1
+                    ) {
+                        Icon(Icons.Default.Remove, contentDescription = "Reducir cantidad")
+                    }
+
+                    Text(text = quantity.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+                    IconButton(
+                        onClick = { if (quantity < 5) quantity++ },
+                        enabled = quantity < 5
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Aumentar cantidad")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(quantity) },
+            ) {
+                Text("Confirmar reserva")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
