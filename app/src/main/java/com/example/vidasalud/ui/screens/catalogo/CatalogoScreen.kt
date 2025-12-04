@@ -23,7 +23,6 @@ import androidx.navigation.NavController
 import com.example.vidasalud.R
 import com.example.vidasalud.ui.screens.compartido.BarraNavegacionPrincipal
 
-// 1. Data class para representar cada actividad (con precio)
 data class Actividad(
     val nombre: String,
     val duracion: String,
@@ -32,7 +31,6 @@ data class Actividad(
     val precio: String
 )
 
-// 2. Lista de todas las actividades (con precios actualizados)
 val listaDeActividades = listOf(
     Actividad(
         nombre = "Yoga",
@@ -84,7 +82,6 @@ fun CatalogoScreen(
     nombre: String = "Cliente",
     rol: String = "cliente",
 ) {
-    // --- ESTADO PARA CONTROLAR EL DIÁLOGO ---
     var showDialog by remember { mutableStateOf(false) }
     var selectedActivity by remember { mutableStateOf<Actividad?>(null) }
 
@@ -92,7 +89,6 @@ fun CatalogoScreen(
         modifier = Modifier.fillMaxSize()
     ) {
 
-        // ================ HEADER =====================
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -113,21 +109,19 @@ fun CatalogoScreen(
             }
         }
 
-        // ================ CONTENIDO DESLIZABLE =====================
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp) // Espacio entre tarjetas
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            item { // Título de la sección
+            item { 
                 Text("Planes de Ejercicio", fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // 3. Itera sobre la lista de actividades y pasa la función para abrir el diálogo
             items(listaDeActividades) { actividad ->
                 ActivityCard(actividad = actividad, onReserveClick = {
                     selectedActivity = it
@@ -136,7 +130,6 @@ fun CatalogoScreen(
             }
         }
 
-        // ================ FOOTER =====================
         BarraNavegacionPrincipal(
             navController = navController,
             nombreUsuario = nombre,
@@ -145,21 +138,18 @@ fun CatalogoScreen(
         )
     }
 
-    // --- DIÁLOGO DE CONFIRMACIÓN ---
     if (showDialog && selectedActivity != null) {
         ReservationDialog(
             activityName = selectedActivity!!.nombre,
             onDismiss = { showDialog = false },
             onConfirm = { quantity ->
-                // Aquí puedes añadir la lógica para manejar la confirmación
-                // Ejemplo: Toast.makeText(context, "Reservaste $quantity clases de ${selectedActivity!!.nombre}", Toast.LENGTH_SHORT).show()
+                // Lógica de confirmación
                 showDialog = false
             }
         )
     }
 }
 
-// 4. Función reutilizable para dibujar cada tarjeta de actividad
 @Composable
 fun ActivityCard(actividad: Actividad, onReserveClick: (Actividad) -> Unit) {
     Card(
@@ -197,7 +187,7 @@ fun ActivityCard(actividad: Actividad, onReserveClick: (Actividad) -> Unit) {
                         color = MaterialTheme.colorScheme.primary
                     )
                     Button(
-                        onClick = { onReserveClick(actividad) }, // Llama a la función al hacer clic
+                        onClick = { onReserveClick(actividad) },
                         modifier = Modifier.align(Alignment.CenterEnd)
                     ) {
                         Text("Reservar")
@@ -208,7 +198,6 @@ fun ActivityCard(actividad: Actividad, onReserveClick: (Actividad) -> Unit) {
     }
 }
 
-// 5. Composable para el diálogo de reserva con selector de cantidad
 @Composable
 fun ReservationDialog(activityName: String, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
     var quantity by remember { mutableStateOf(1) }

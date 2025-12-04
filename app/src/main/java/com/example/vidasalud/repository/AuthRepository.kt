@@ -2,7 +2,6 @@ package com.example.vidasalud.repository
 
 import com.example.vidasalud.model.Usuario
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -10,56 +9,55 @@ class AuthRepository {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
 
-    suspend fun getCurrentUserData(): Usuario? {
-        val firebaseUser = auth.currentUser
-        return if (firebaseUser != null) {
-            fetchUserDataFromFirestore(firebaseUser.uid, firebaseUser.email ?: "")
-        } else {
-            null
-        }
-    }
-
     suspend fun login(correo: String, clave: String): Usuario? {
-        // Se intenta iniciar sesión directamente.
-        // signInWithEmailAndPassword lanzará una excepción específica si el usuario no existe
-        // o si la contraseña es incorrecta. Estas excepciones se manejan en el ViewModel.
-        val authResult = auth.signInWithEmailAndPassword(correo, clave).await()
-        val firebaseUser = authResult.user
-
-        // Si la autenticación es exitosa, se buscan los datos del usuario en Firestore.
-        return if (firebaseUser != null) {
-            fetchUserDataFromFirestore(firebaseUser.uid, correo)
+        if (correo == "admin@vidasalud.cl") {
+            return try {
+                val authResult = auth.signInWithEmailAndPassword(correo, clave).await()
+                Usuario(uid = authResult.user?.uid ?: "", correo = correo, nombre = "Administrador", rol = "admin")
+            } catch (e: Exception) {
+                null
+            }
         } else {
-            null
+            return loginWithFirestore(correo, clave)
         }
     }
 
-    private suspend fun fetchUserDataFromFirestore(uid: String, correo: String): Usuario? {
+    private suspend fun loginWithFirestore(correo: String, clave: String): Usuario? {
         return try {
-            // Caso especial para el admin
-            if (correo == "admin@vidasalud.cl") {
-                return Usuario(
-                    correo = correo,
-                    nombre = "Administrador",
-                    rol = "admin"
-                )
-            }
-
-            // Obtener el documento directamente por UID
-            val docSnapshot = db.collection("usuario")
-                .document(uid)
+            val query = db.collection("usuario")
+                .whereEqualTo("correo", correo)
+                .whereEqualTo("clave", clave)
                 .get()
                 .await()
 
-            if (docSnapshot.exists()) {
+            if (!query.isEmpty && query.documents.isNotEmpty()) {
+                val doc = query.documents[0]
                 Usuario(
-                    correo = docSnapshot.getString("correo") ?: correo,
-                    nombre = docSnapshot.getString("nombre") ?: "Cliente",
-                    rol = docSnapshot.getString("rol") ?: "cliente"
+                    uid = doc.id, // Usar el ID del documento como UID
+                    correo = doc.getString("correo") ?: "",
+                    nombre = doc.getString("nombre") ?: "Usuario",
+                    rol = doc.getString("rol") ?: "cliente"
                 )
             } else {
-                // Usuario registrado en Auth pero sin datos en Firestore
                 null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun register(correo: String, clave: String, nombre: String): Usuario? {
+        return try {
+            val authResult = auth.createUserWithEmailAndPassword(correo, clave).await()
+            authResult.user?.let { firebaseUser ->
+                val newUser = Usuario(
+                    uid = firebaseUser.uid,
+                    correo = correo,
+                    nombre = nombre,
+                    rol = "cliente"
+                )
+                db.collection("usuario").document(firebaseUser.uid).set(newUser).await()
+                newUser
             }
         } catch (e: Exception) {
             null

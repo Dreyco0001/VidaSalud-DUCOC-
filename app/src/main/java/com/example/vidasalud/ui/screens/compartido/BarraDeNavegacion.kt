@@ -33,10 +33,10 @@ fun BarraNavegacionPrincipal(
     rutaActual: String
 ) {
     val items = listOf(
-        ItemNavegacion("Inicio", Icons.Filled.Home, "home/{nombre}/{rol}"),
-        ItemNavegacion("Registrar", Icons.Filled.AddCircleOutline, "registroDatos/{nombre}/{rol}"),
-        ItemNavegacion("Comunidad", Icons.Filled.Group, "feed/{nombre}/{rol}"),
-        ItemNavegacion("Perfil", Icons.Filled.Person, "perfil/{nombre}/{rol}")
+        ItemNavegacion("Inicio", Icons.Filled.Home, "home"),
+        ItemNavegacion("Registrar", Icons.Filled.AddCircleOutline, "registroDatos"),
+        ItemNavegacion("Comunidad", Icons.Filled.Group, "feed"),
+        ItemNavegacion("Perfil", Icons.Filled.Person, "perfil")
     )
 
     Surface(
@@ -56,15 +56,12 @@ fun BarraNavegacionPrincipal(
             verticalAlignment = Alignment.CenterVertically
         ) {
             items.forEach { item ->
-                val rutaReal = item.plantillaRuta
-                    .replace("{nombre}", nombreUsuario)
-                    .replace("{rol}", rolUsuario)
-                
-                val estaSeleccionado = item.plantillaRuta == rutaActual
+                val estaSeleccionado = rutaActual.startsWith(item.plantillaRuta)
 
                 VistaItemNavegacion(item = item, estaSeleccionado = estaSeleccionado) {
-                    if (item.plantillaRuta != rutaActual) {
-                        navController.navigate(rutaReal) {
+                    if (!estaSeleccionado) {
+                        val rutaCompleta = "${item.plantillaRuta}/$nombreUsuario/$rolUsuario"
+                        navController.navigate(rutaCompleta) {
                             popUpTo(navController.graph.startDestinationId)
                             launchSingleTop = true
                         }
@@ -103,8 +100,7 @@ fun VistaItemNavegacion(item: ItemNavegacion, estaSeleccionado: Boolean, onClick
                 modifier = Modifier.size(24.dp)
             )
         }
-        // espacio entre icono y texto
-        Spacer(modifier = Modifier.height(2.dp)) 
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = item.etiqueta,
             color = colorTexto,

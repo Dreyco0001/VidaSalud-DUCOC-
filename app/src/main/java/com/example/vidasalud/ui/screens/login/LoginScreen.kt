@@ -19,31 +19,22 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType //Controlar el tipo de entrada para el usuario
 import androidx.compose.ui.text.input.PasswordVisualTransformation //Ocultar la contraseña al escribirla
 import androidx.compose.ui.unit.dp //Controlar el tamaño de los elementos
-
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vidasalud.R
+import com.example.vidasalud.model.Usuario
 import com.example.vidasalud.viewmodel.LoginViewModel
-
 
 @Composable
 fun LoginScreen(onRegisterClick: () -> Unit = {},
-                onLoginSuccess: (user: com.example.vidasalud.model.Usuario) -> Unit = {} ) {
-    //Variable para obtener en tiempo de ejecución el estado del ciclo de vida de app
+                onLoginSuccess: (user: Usuario) -> Unit = {} ) {
     val context = LocalContext.current
-
-    //Variable para el corre
     var correo by remember { mutableStateOf("") }
-
-    val viewModel: LoginViewModel = viewModel()
-    //Variable para almacenar en nombre del usuario
-    val user by viewModel.usuario.collectAsState() //*Cambiar
-    val carga by viewModel.cargaLogin.collectAsState()
-    val loginError by viewModel.loginError.collectAsState()
-
-    //Variable para almacenar la clave del usuario
     var pass by remember { mutableStateOf("") }
 
-    //Funcion que observa cuando el usuario se logue
+    val viewModel: LoginViewModel = viewModel()
+    val user by viewModel.usuario.collectAsState()
+    val carga by viewModel.cargaLogin.collectAsState()
+
     LaunchedEffect(user) {
         user?.let {
             val mensaje = when (it.rol) {
@@ -56,16 +47,9 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
         }
     }
 
-    LaunchedEffect(loginError) {
-        loginError?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-            viewModel.clearError()
-        }
-    }
-
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center // This centers the Card
+        contentAlignment = Alignment.Center
     ) {
         Image(
             painter = painterResource(id = R.drawable.diseno),
@@ -84,10 +68,9 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
-            //Configuración para organizar los elementos de la pantalla usando el componente Column()
             Column(
                 modifier = Modifier
-                    .padding(24.dp), // Padding inside the card
+                    .padding(24.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -123,10 +106,6 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
                     onClick = {
                         if (correo.isEmpty() || pass.isEmpty()) {
                             Toast.makeText(context, "Completar todos los campos", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
-                        if (!correo.contains("@")) {
-                            Toast.makeText(context, "El correo no es válido", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         viewModel.login(correo, pass)
