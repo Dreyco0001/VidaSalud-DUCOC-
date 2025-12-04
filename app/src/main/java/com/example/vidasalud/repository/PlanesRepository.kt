@@ -9,16 +9,16 @@ class PlanesRepository {
     private val db = FirebaseFirestore.getInstance()
     private val planesCollection = db.collection("planes")
 
-    // --------------------------
-    //   CREAR PLAN
-    // --------------------------
-
+    // ---------------------------------------------------
+    //  CREAR PLAN
+    // ---------------------------------------------------
     suspend fun crearPlan(
         nombre: String,
         duracion: Int,
         nivel: String,
         objetivo: String,
-        imagenUrl: String? = null
+        imagenUrl: String?,
+        precio: Int
     ): Result<Unit> {
         return try {
             val data = hashMapOf(
@@ -26,7 +26,8 @@ class PlanesRepository {
                 "duracion" to duracion,
                 "nivel" to nivel,
                 "objetivo" to objetivo,
-                "imagenUrl" to (imagenUrl ?: "")
+                "imagenUrl" to (imagenUrl ?: ""),
+                "precio" to precio
             )
 
             planesCollection.add(data).await()
@@ -37,10 +38,9 @@ class PlanesRepository {
         }
     }
 
-    // --------------------------
-    //   OBTENER PLANES
-    // --------------------------
-
+    // ---------------------------------------------------
+    //  OBTENER PLANES UNA SOLA VEZ
+    // ---------------------------------------------------
     suspend fun obtenerPlanes(): List<Plan> {
         return try {
             val snapshot = planesCollection.get().await()
@@ -52,10 +52,9 @@ class PlanesRepository {
         }
     }
 
-    // --------------------------
-    //   ESCUCHAR PLANES
-    // --------------------------
-
+    // ---------------------------------------------------
+    //  ESCUCHA EN TIEMPO REAL
+    // ---------------------------------------------------
     fun escucharPlanes(onChange: (List<Plan>) -> Unit) {
         planesCollection.addSnapshotListener { snapshot, error ->
             if (error != null || snapshot == null) {
@@ -71,17 +70,17 @@ class PlanesRepository {
         }
     }
 
-    // --------------------------
-    //   ACTUALIZAR PLAN
-    // --------------------------
-
+    // ---------------------------------------------------
+    //  ACTUALIZAR PLAN
+    // ---------------------------------------------------
     suspend fun actualizarPlan(
         id: String,
         nombre: String? = null,
         duracion: Int? = null,
         nivel: String? = null,
         objetivo: String? = null,
-        imagenUrl: String? = null
+        imagenUrl: String? = null,
+        precio: Int? = null
     ): Result<Unit> {
         return try {
             val updates = mutableMapOf<String, Any>()
@@ -91,6 +90,7 @@ class PlanesRepository {
             nivel?.let { updates["nivel"] = it }
             objetivo?.let { updates["objetivo"] = it }
             imagenUrl?.let { updates["imagenUrl"] = it }
+            precio?.let { updates["precio"] = it }
 
             if (updates.isNotEmpty()) {
                 planesCollection.document(id).update(updates).await()
@@ -103,10 +103,9 @@ class PlanesRepository {
         }
     }
 
-    // --------------------------
-    //   ELIMINAR PLAN
-    // --------------------------
-
+    // ---------------------------------------------------
+    //  ELIMINAR PLAN
+    // ---------------------------------------------------
     suspend fun eliminarPlan(id: String): Result<Unit> {
         return try {
             planesCollection.document(id).delete().await()

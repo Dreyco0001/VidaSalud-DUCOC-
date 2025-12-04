@@ -43,24 +43,36 @@ class GestionPlanesViewModel(
         }
     }
 
+    // ---------------------------------------------------------
+    //  CREAR PLAN (AGREGADO PRECIO)
+    // ---------------------------------------------------------
     fun crearPlan(
         nombre: String,
         duracion: Int,
         nivel: String,
         objetivo: String,
-        imagenUrl: String? = null
+        imagenUrl: String? = null,
+        precio: Int
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val result = repository.crearPlan(nombre, duracion, nivel, objetivo, imagenUrl)
+                val result = repository.crearPlan(
+                    nombre = nombre,
+                    duracion = duracion,
+                    nivel = nivel,
+                    objetivo = objetivo,
+                    imagenUrl = imagenUrl,
+                    precio = precio
+                )
 
                 if (result.isSuccess) {
                     obtenerPlanes()
                 } else {
-                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "No se pudo crear el plan"
+                    _error.value = result.exceptionOrNull()?.localizedMessage
+                        ?: "No se pudo crear el plan"
                 }
 
             } catch (e: Exception) {
@@ -71,25 +83,38 @@ class GestionPlanesViewModel(
         }
     }
 
+    // ---------------------------------------------------------
+    //  ACTUALIZAR PLAN (AGREGADO PRECIO)
+    // ---------------------------------------------------------
     fun actualizarPlan(
         id: String,
         nombre: String? = null,
         duracion: Int? = null,
         nivel: String? = null,
         objetivo: String? = null,
-        imagenUrl: String? = null
+        imagenUrl: String? = null,
+        precio: Int,
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val result = repository.actualizarPlan(id, nombre, duracion, nivel, objetivo, imagenUrl)
+                val result = repository.actualizarPlan(
+                    id = id,
+                    nombre = nombre,
+                    duracion = duracion,
+                    nivel = nivel,
+                    objetivo = objetivo,
+                    imagenUrl = imagenUrl,
+                    precio = precio
+                )
 
                 if (result.isSuccess) {
                     obtenerPlanes()
                 } else {
-                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "No se pudo actualizar el plan"
+                    _error.value = result.exceptionOrNull()?.localizedMessage
+                        ?: "No se pudo actualizar el plan"
                 }
 
             } catch (e: Exception) {
@@ -111,7 +136,8 @@ class GestionPlanesViewModel(
                 if (result.isSuccess) {
                     obtenerPlanes()
                 } else {
-                    _error.value = result.exceptionOrNull()?.localizedMessage ?: "No se pudo eliminar el plan"
+                    _error.value = result.exceptionOrNull()?.localizedMessage
+                        ?: "No se pudo eliminar el plan"
                 }
 
             } catch (e: Exception) {

@@ -10,17 +10,17 @@ class AuthRepository {
     private val db = FirebaseFirestore.getInstance()
 
     suspend fun login(correo: String, clave: String): Usuario? {
-        if (correo == "admin@vidasalud.cl") {
-            return try {
-                val authResult = auth.signInWithEmailAndPassword(correo, clave).await()
-                Usuario(uid = authResult.user?.uid ?: "", correo = correo, nombre = "Administrador", rol = "admin")
-            } catch (e: Exception) {
-                null
-            }
-        } else {
-            return loginWithFirestore(correo, clave)
+        return try {
+            val authResult = auth.signInWithEmailAndPassword(correo, clave).await()
+            val uid = authResult.user?.uid ?: return null
+
+            val doc = db.collection("usuario").document(uid).get().await()
+            doc.toObject(Usuario::class.java)
+        } catch (e: Exception) {
+            null
         }
     }
+
 
     private suspend fun loginWithFirestore(correo: String, clave: String): Usuario? {
         return try {
