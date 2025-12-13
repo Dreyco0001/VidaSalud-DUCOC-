@@ -18,7 +18,9 @@ class PlanesRepository {
         nivel: String,
         objetivo: String,
         imagenUrl: String?,
-        precio: Int
+        precio: Int,
+        comidaRecomendada: String,
+        imagenComidaUrl: String
     ): Result<Unit> {
         return try {
             val data = hashMapOf(
@@ -27,7 +29,10 @@ class PlanesRepository {
                 "nivel" to nivel,
                 "objetivo" to objetivo,
                 "imagenUrl" to (imagenUrl ?: ""),
-                "precio" to precio
+                "precio" to precio,
+                // 🔥 nombres alineados con el MODEL
+                "comidaRecomendada" to comidaRecomendada,
+                "imagenComidaUrl" to imagenComidaUrl
             )
 
             planesCollection.add(data).await()
@@ -37,6 +42,8 @@ class PlanesRepository {
             Result.failure(e)
         }
     }
+
+
 
     // ---------------------------------------------------
     //  OBTENER PLANES UNA SOLA VEZ
@@ -80,7 +87,9 @@ class PlanesRepository {
         nivel: String? = null,
         objetivo: String? = null,
         imagenUrl: String? = null,
-        precio: Int? = null
+        precio: Int? = null,
+        comidaRecomendada: String? = null,
+        imagenComidaUrl: String? = null
     ): Result<Unit> {
         return try {
             val updates = mutableMapOf<String, Any>()
@@ -91,6 +100,8 @@ class PlanesRepository {
             objetivo?.let { updates["objetivo"] = it }
             imagenUrl?.let { updates["imagenUrl"] = it }
             precio?.let { updates["precio"] = it }
+            comidaRecomendada?.let { updates["comidaRecomendada"] = it }
+            imagenComidaUrl?.let { updates["imagenComidaUrl"] = it }
 
             if (updates.isNotEmpty()) {
                 planesCollection.document(id).update(updates).await()

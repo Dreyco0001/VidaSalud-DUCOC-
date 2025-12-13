@@ -7,5 +7,8 @@ data class Plan(
     val nivel: String = "",
     val objetivo: String = "",
     val imagenUrl: String = "",
-    val precio: Int = 0
+    val precio: Int = 0,
+    // 🔥 NUEVO
+    val comidaRecomendada: String = "",
+    val imagenComidaUrl: String = ""
 )

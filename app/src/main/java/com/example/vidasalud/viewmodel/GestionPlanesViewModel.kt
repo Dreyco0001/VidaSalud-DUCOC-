@@ -1,6 +1,5 @@
 package com.example.vidasalud.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vidasalud.model.Plan
@@ -30,11 +29,8 @@ class GestionPlanesViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-
             try {
-                val result = repository.obtenerPlanes()
-                _planes.value = result.ifEmpty { emptyList() }
-
+                _planes.value = repository.obtenerPlanes()
             } catch (e: Exception) {
                 _error.value = "Error cargando planes: ${e.localizedMessage}"
                 _planes.value = emptyList()
@@ -45,7 +41,7 @@ class GestionPlanesViewModel(
     }
 
     // ---------------------------------------------------------
-    //  CREAR PLAN (AGREGADO PRECIO)
+    //  CREAR PLAN (COMIDA RECOMENDADA + IMAGEN)
     // ---------------------------------------------------------
     fun crearPlan(
         nombre: String,
@@ -53,7 +49,9 @@ class GestionPlanesViewModel(
         nivel: String,
         objetivo: String,
         imagenUrl: String? = null,
-        precio: Int
+        precio: Int,
+        comidaRecomendada: String,
+        imagenComidaUrl: String
     ) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -66,16 +64,16 @@ class GestionPlanesViewModel(
                     nivel = nivel,
                     objetivo = objetivo,
                     imagenUrl = imagenUrl,
-                    precio = precio
+                    precio = precio,
+                    comidaRecomendada = comidaRecomendada,
+                    imagenComidaUrl = imagenComidaUrl
                 )
 
                 if (result.isSuccess) {
                     obtenerPlanes()
                 } else {
-                    _error.value = result.exceptionOrNull()?.localizedMessage
-                        ?: "No se pudo crear el plan"
+                    _error.value = "No se pudo crear el plan"
                 }
-
             } catch (e: Exception) {
                 _error.value = "Error creando plan: ${e.localizedMessage}"
             } finally {
@@ -85,7 +83,7 @@ class GestionPlanesViewModel(
     }
 
     // ---------------------------------------------------------
-    //  ACTUALIZAR PLAN (AGREGADO PRECIO)
+    //  ACTUALIZAR PLAN
     // ---------------------------------------------------------
     fun actualizarPlan(
         id: String,
@@ -94,7 +92,9 @@ class GestionPlanesViewModel(
         nivel: String? = null,
         objetivo: String? = null,
         imagenUrl: String? = null,
-        precio: Int,
+        precio: Int? = null,
+        comidaRecomendada: String? = null,
+        imagenComidaUrl: String? = null
     ) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -108,16 +108,16 @@ class GestionPlanesViewModel(
                     nivel = nivel,
                     objetivo = objetivo,
                     imagenUrl = imagenUrl,
-                    precio = precio
+                    precio = precio,
+                    comidaRecomendada = comidaRecomendada,
+                    imagenComidaUrl = imagenComidaUrl
                 )
 
                 if (result.isSuccess) {
                     obtenerPlanes()
                 } else {
-                    _error.value = result.exceptionOrNull()?.localizedMessage
-                        ?: "No se pudo actualizar el plan"
+                    _error.value = "No se pudo actualizar el plan"
                 }
-
             } catch (e: Exception) {
                 _error.value = "Error actualizando plan: ${e.localizedMessage}"
             } finally {
@@ -126,24 +126,14 @@ class GestionPlanesViewModel(
         }
     }
 
-
-
-
     fun eliminarPlan(id: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-
             try {
                 val result = repository.eliminarPlan(id)
-
-                if (result.isSuccess) {
-                    obtenerPlanes()
-                } else {
-                    _error.value = result.exceptionOrNull()?.localizedMessage
-                        ?: "No se pudo eliminar el plan"
-                }
-
+                if (result.isSuccess) obtenerPlanes()
+                else _error.value = "No se pudo eliminar el plan"
             } catch (e: Exception) {
                 _error.value = "Error eliminando plan: ${e.localizedMessage}"
             } finally {

@@ -48,12 +48,10 @@ fun GestionPlanesScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onVolver) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver"
-                    )
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                 }
                 Column {
                     Text(
@@ -67,15 +65,8 @@ fun GestionPlanesScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
-
-            error?.let { msg ->
-                Text(msg, color = Color.Red)
-            }
+            if (isLoading) CircularProgressIndicator()
+            error?.let { Text(it, color = Color.Red) }
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(planes) { plan ->
@@ -89,33 +80,29 @@ fun GestionPlanesScreen(
         }
     }
 
-    // DIALOGO CREAR
+    // CREAR
     if (mostrarDialogoCrear) {
         DialogoPlan(
             titulo = "Crear Plan",
             plan = null,
             onDismiss = { mostrarDialogoCrear = false },
-            onGuardar = { nombre, duracion, nivel, objetivo, imagenUrl, precio ->
+            onGuardar = { nombre, duracion, nivel, objetivo, imagenUrl, precio, comida, imagenComida ->
                 viewModel.crearPlan(
-                    nombre = nombre,
-                    duracion = duracion,
-                    nivel = nivel,
-                    objetivo = objetivo,
-                    imagenUrl = imagenUrl,
-                    precio = precio
+                    nombre, duracion, nivel, objetivo,
+                    imagenUrl, precio, comida, imagenComida
                 )
                 mostrarDialogoCrear = false
             }
         )
     }
 
-    // DIALOGO EDITAR
+    // EDITAR
     planAEditar?.let { plan ->
         DialogoPlan(
             titulo = "Editar Plan",
             plan = plan,
             onDismiss = { planAEditar = null },
-            onGuardar = { nombre, duracion, nivel, objetivo, imagenUrl, precio ->
+            onGuardar = { nombre, duracion, nivel, objetivo, imagenUrl, precio, comida, imagenComida ->
                 viewModel.actualizarPlan(
                     id = plan.id,
                     nombre = nombre,
@@ -123,7 +110,9 @@ fun GestionPlanesScreen(
                     nivel = nivel,
                     objetivo = objetivo,
                     imagenUrl = imagenUrl,
-                    precio = precio
+                    precio = precio,
+                    comidaRecomendada = comida,
+                    imagenComidaUrl = imagenComida
                 )
                 planAEditar = null
             }
@@ -143,42 +132,58 @@ fun PlanItem(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF2F7))
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Column(Modifier.padding(12.dp)) {
 
             if (plan.imagenUrl.isNotBlank()) {
                 AsyncImage(
                     model = plan.imagenUrl,
                     contentDescription = null,
-                    modifier = Modifier.size(70.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
                     contentScale = ContentScale.Crop
                 )
-                Spacer(modifier = Modifier.width(12.dp))
             }
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(plan.nombre, fontWeight = FontWeight.Bold)
-                Text("Duración: ${plan.duracion} min")
-                Text("Nivel: ${plan.nivel}")
-                Text("Objetivo: ${plan.objetivo}")
-                Text("Precio: ${formatPrecio(plan.precio)}")
+            Spacer(Modifier.height(8.dp))
+
+            Text(plan.nombre, fontWeight = FontWeight.Bold)
+            Text("Duración: ${plan.duracion} min")
+            Text("Nivel: ${plan.nivel}")
+            Text("Objetivo: ${plan.objetivo}")
+            Text("Precio: ${formatPrecio(plan.precio)}")
+
+            if (plan.comidaRecomendada.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text("🍽 Recomendación:", fontWeight = FontWeight.SemiBold)
+                Text(plan.comidaRecomendada)
             }
 
-            IconButton(onClick = onEditar) {
-                Icon(Icons.Default.Edit, contentDescription = "Editar")
+            if (plan.imagenComidaUrl.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                AsyncImage(
+                    model = plan.imagenComidaUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentScale = ContentScale.Crop
+                )
             }
-            IconButton(onClick = onEliminar) {
-                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red)
+
+            Row(
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                IconButton(onClick = onEditar) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar")
+                }
+                IconButton(onClick = onEliminar) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red)
+                }
             }
         }
     }
-}
-
-// Helper para mostrar precio como $xx.xxx
-private fun formatPrecio(precio: Int): String {
-    return "$" + "%,d".format(precio).replace(',', '.')
 }
 
 // -------------------------------------------------------------
@@ -186,99 +191,78 @@ private fun formatPrecio(precio: Int): String {
 @Composable
 fun DialogoPlan(
     titulo: String,
-    plan: Plan? = null,
+    plan: Plan?,
     onDismiss: () -> Unit,
-    onGuardar: (String, Int, String, String, String?, Int) -> Unit
+    onGuardar: (String, Int, String, String, String?, Int, String, String) -> Unit
 ) {
-    // Work with Strings in the TextFields
     var nombre by remember { mutableStateOf(plan?.nombre ?: "") }
     var duracionStr by remember { mutableStateOf(plan?.duracion?.toString() ?: "") }
     var nivel by remember { mutableStateOf(plan?.nivel ?: "") }
     var objetivo by remember { mutableStateOf(plan?.objetivo ?: "") }
     var imagenUrl by remember { mutableStateOf(plan?.imagenUrl ?: "") }
     var precioStr by remember { mutableStateOf(plan?.precio?.toString() ?: "") }
+    var comida by remember { mutableStateOf(plan?.comidaRecomendada ?: "") }
+    var imagenComida by remember { mutableStateOf(plan?.imagenComidaUrl ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(titulo) },
         confirmButton = {
             Button(onClick = {
-                // Convertir strings a Int de forma segura
-                val duracion = duracionStr.toIntOrNull() ?: 0
-                val precio = precioStr.toIntOrNull() ?: 0
-
-                // imagenUrl => null si blank
-                val imagenOpt = imagenUrl.ifBlank { null }
-
                 onGuardar(
-                    nombre.trim(),
-                    duracion,
-                    nivel.trim(),
-                    objetivo.trim(),
-                    imagenOpt,
-                    precio
+                    nombre,
+                    duracionStr.toIntOrNull() ?: 0,
+                    nivel,
+                    objetivo,
+                    imagenUrl.ifBlank { null },
+                    precioStr.toIntOrNull() ?: 0,
+                    comida,
+                    imagenComida
                 )
-            }) {
-                Text("Guardar")
-            }
+            }) { Text("Guardar") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
+                OutlinedTextField(nombre, { nombre = it }, label = { Text("Nombre") }, singleLine = true)
                 OutlinedTextField(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    label = { Text("Nombre") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = duracionStr,
-                    onValueChange = { duracionStr = it.filter { ch -> ch.isDigit() } }, // solo dígitos
+                    duracionStr,
+                    { duracionStr = it.filter(Char::isDigit) },
                     label = { Text("Duración (min)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
                 )
-
+                OutlinedTextField(nivel, { nivel = it }, label = { Text("Nivel") }, singleLine = true)
+                OutlinedTextField(objetivo, { objetivo = it }, label = { Text("Objetivo") }, singleLine = true)
+                OutlinedTextField(imagenUrl, { imagenUrl = it }, label = { Text("Imagen del plan") }, singleLine = true)
                 OutlinedTextField(
-                    value = nivel,
-                    onValueChange = { nivel = it },
-                    label = { Text("Nivel") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    precioStr,
+                    { precioStr = it.filter(Char::isDigit) },
+                    label = { Text("Precio") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
                 )
-
                 OutlinedTextField(
-                    value = objetivo,
-                    onValueChange = { objetivo = it },
-                    label = { Text("Objetivo") },
-                    modifier = Modifier.fillMaxWidth()
+                    comida,
+                    { comida = it },
+                    label = { Text("Descripción comida recomendada") },
+                    singleLine = true
                 )
-
                 OutlinedTextField(
-                    value = imagenUrl,
-                    onValueChange = { imagenUrl = it },
-                    label = { Text("URL de imagen (opcional)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = precioStr,
-                    onValueChange = { precioStr = it.filter { ch -> ch.isDigit() } }, // solo dígitos
-                    label = { Text("Precio (sin símbolos)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                    imagenComida,
+                    { imagenComida = it },
+                    label = { Text("Imagen comida (URL)") },
+                    singleLine = true
                 )
             }
         }
     )
 }
+
+// -------------------------------------------------------------
+
+private fun formatPrecio(precio: Int): String =
+    "$" + "%,d".format(precio).replace(',', '.')
