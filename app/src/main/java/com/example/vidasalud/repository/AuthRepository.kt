@@ -12,14 +12,20 @@ class AuthRepository {
     suspend fun login(correo: String, clave: String): Usuario? {
         return try {
             val authResult = auth.signInWithEmailAndPassword(correo, clave).await()
-            val uid = authResult.user?.uid ?: return null
+            val uid = authResult.user?.uid ?: throw Exception("Correo o contraseña incorrectos")
 
             val doc = db.collection("usuario").document(uid).get().await()
+
+            if (!doc.exists()) {
+                throw Exception("Correo o contraseña incorrectos")
+            }
+
             doc.toObject(Usuario::class.java)
         } catch (e: Exception) {
-            null
+            throw Exception("Correo o contraseña incorrectos")
         }
     }
+
 
 
     private suspend fun loginWithFirestore(correo: String, clave: String): Usuario? {

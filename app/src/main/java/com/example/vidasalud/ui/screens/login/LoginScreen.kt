@@ -25,8 +25,10 @@ import com.example.vidasalud.model.Usuario
 import com.example.vidasalud.viewmodel.LoginViewModel
 
 @Composable
-fun LoginScreen(onRegisterClick: () -> Unit = {},
-                onLoginSuccess: (user: Usuario) -> Unit = {} ) {
+fun LoginScreen(
+    onRegisterClick: () -> Unit = {},
+    onLoginSuccess: (user: Usuario) -> Unit = {}
+) {
     val context = LocalContext.current
     var correo by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
@@ -34,7 +36,9 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
     val viewModel: LoginViewModel = viewModel()
     val user by viewModel.usuario.collectAsState()
     val carga by viewModel.cargaLogin.collectAsState()
+    val errorLogin by viewModel.errorLogin.collectAsState() // 👈 AQUI
 
+    // LOGIN OK
     LaunchedEffect(user) {
         user?.let {
             val mensaje = when (it.rol) {
@@ -44,6 +48,14 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
             Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
             onLoginSuccess(it)
             viewModel.clearUser()
+        }
+    }
+
+    // ❌ LOGIN ERROR
+    LaunchedEffect(errorLogin) {
+        errorLogin?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
         }
     }
 
@@ -63,27 +75,27 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
                 .fillMaxWidth()
                 .padding(32.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White,
-            ),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(
-                modifier = Modifier
-                    .padding(24.dp),
+                modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Inciar Sesión",
+
+                Text(
+                    "Inciar Sesión",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color(0xFF4CAF50))
+                    color = Color(0xFF4CAF50)
+                )
 
                 Spacer(Modifier.height(46.dp))
 
                 OutlinedTextField(
                     value = correo,
                     onValueChange = { correo = it },
-                    label = { Text("Usuario", color = Color(0xFFFF5722))},
+                    label = { Text("Usuario", color = Color(0xFFFF5722)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -93,7 +105,7 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
                 OutlinedTextField(
                     value = pass,
                     onValueChange = { pass = it },
-                    label = { Text("Clave", color = Color(0xFFFF5722))},
+                    label = { Text("Clave", color = Color(0xFFFF5722)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -117,7 +129,10 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
                     )
                 ) {
                     if (carga) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White
+                        )
                     } else {
                         Text("Entrar")
                     }
@@ -127,9 +142,7 @@ fun LoginScreen(onRegisterClick: () -> Unit = {},
 
                 TextButton(
                     onClick = onRegisterClick,
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(bottom = 16.dp)
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
                     Text(
                         "No tengo una cuenta",
