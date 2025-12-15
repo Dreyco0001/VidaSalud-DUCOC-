@@ -1,38 +1,13 @@
 package com.example.vidasalud.ui.screens.catalogo
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,25 +21,35 @@ import coil.compose.AsyncImage
 import com.example.vidasalud.model.Plan
 import com.example.vidasalud.ui.screens.compartido.BarraNavegacionPrincipal
 import com.example.vidasalud.viewmodel.GestionPlanesViewModel
+import com.example.vidasalud.viewmodel.NotificacionesViewModel
 
 @Composable
 fun CatalogoScreen(
     navController: NavController,
-    nombre: String = "Cliente",
-    rol: String = "cliente",
-    viewModel: GestionPlanesViewModel = viewModel()
+    nombre: String,
+    rol: String,
+    planesViewModel: GestionPlanesViewModel = viewModel(),
+    notificacionesViewModel: NotificacionesViewModel = viewModel()
 ) {
-    var showDialog by remember { mutableStateOf(false) }
-    var selectedPlan by remember { mutableStateOf<Plan?>(null) }
+    val planes by planesViewModel.planes.collectAsState()
+    val cargando by planesViewModel.isLoading.collectAsState()
 
-    val planes by viewModel.planes.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val notificaciones by notificacionesViewModel.notificaciones.collectAsState()
+    val error by notificacionesViewModel.error.collectAsState()
+
+    var planSeleccionado by remember { mutableStateOf<Plan?>(null) }
+    var mostrarConfirmacion by remember { mutableStateOf(false) }
+    var mostrarNotificaciones by remember { mutableStateOf(false) }
+    var mensajeResultado by remember { mutableStateOf<String?>(null) }
+    var planEliminar by remember { mutableStateOf<Plan?>(null) }
+
+    LaunchedEffect(Unit) {
+        notificacionesViewModel.cargarNotificaciones(rol)
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // ------------------------------
-        // TOP BAR
-        // ------------------------------
+        /* ================= TOP BAR ================= */
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -73,60 +58,89 @@ fun CatalogoScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("VidaSalud 💙", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Button(
-                onClick = {
-                    navController.navigate("login") {
-                        popUpTo("login") { inclusive = true }
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-            ) {
-                Text("Cerrar sesión", color = Color.White)
+
+            IconButton(onClick = { mostrarNotificaciones = !mostrarNotificaciones }) {
+                Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
             }
         }
 
-        // ------------------------------
-        // LOADING
-        // ------------------------------
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+        /* ============ NOTIFICACIONES FIREBASE ============ */
+        /* ============ NOTIFICACIONES FIREBASE ============ */
+        if (mostrarNotificaciones) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F6FA))
             ) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("Planes Tomados", fontWeight = FontWeight.Bold)
+
+                    if (notificaciones.isEmpty()) {
+                        Text("No hay planes registrados", color = Color.Gray)
+                    } else {
+                        notificaciones.forEach { noti ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    // Mostrar plan y precio
+                                    Text("• ${noti.nombrePlan} - $${noti.precio}")
+                                    // Si es admin, mostrar usuario
+                                    if (rol == "admin") {
+                                        Text(
+                                            "Usuario: ${noti.userId}",
+                                            fontSize = 12.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
+
+                                // Solo admin puede eliminar plan desde notificaciones
+                                if (rol == "admin") {
+                                    TextButton(onClick = {
+                                        notificacionesViewModel.eliminarPlanAdmin(noti.id, rol)
+                                    }) {
+                                        Text("Eliminar", color = Color.Red)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        /* ================= CONTENIDO ================= */
+        if (cargando) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
-
-            // ------------------------------
-            // LISTA DE PLANES
-            // ------------------------------
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                item {
-                    Text(
-                        "Planes de Ejercicio",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
                 items(planes) { plan ->
-                    PlanCard(plan = plan, onReserveClick = {
-                        selectedPlan = it
-                        showDialog = true
-                    })
+                    PlanCard(
+                        plan = plan,
+                        rol = rol,
+                        onReservar = {
+                            planSeleccionado = plan
+                            mostrarConfirmacion = true
+                        },
+                        onEliminar = {
+                            planEliminar = plan
+                        }
+                    )
                 }
             }
         }
 
-        // ------------------------------
-        // NAV BAR
-        // ------------------------------
         BarraNavegacionPrincipal(
             navController = navController,
             nombreUsuario = nombre,
@@ -135,112 +149,141 @@ fun CatalogoScreen(
         )
     }
 
-    if (showDialog && selectedPlan != null) {
-        ReservationDialog(
-            activityName = selectedPlan!!.nombre,
-            onDismiss = { showDialog = false },
-            onConfirm = {
-                showDialog = false
-                // Lógica de reserva real la agregas luego
+    /* ================= CONFIRMAR PLAN ================= */
+    planSeleccionado?.let { plan ->
+        if (mostrarConfirmacion) {
+            AlertDialog(
+                onDismissRequest = { mostrarConfirmacion = false },
+                title = { Text("Confirmar Plan") },
+                text = {
+                    Column {
+                        Text(plan.nombre, fontWeight = FontWeight.Bold)
+                        Text(plan.objetivo)
+                        Spacer(Modifier.height(8.dp))
+                        Text("🍽 ${plan.comidaRecomendada}")
+                        Text("Precio: $${plan.precio}")
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        mostrarConfirmacion = false
+                        notificacionesViewModel.tomarPlan(
+                            plan = plan,
+                            rolUsuario = rol
+                        ) {
+                            mensajeResultado = "✅ Plan tomado con éxito"
+                            notificacionesViewModel.cargarNotificaciones(rol)
+                        }
+                    }) {
+                        Text("Confirmar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { mostrarConfirmacion = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+    }
+
+    /* ================= CONFIRMAR ELIMINAR ================= */
+    planEliminar?.let { plan ->
+        AlertDialog(
+            onDismissRequest = { planEliminar = null },
+            title = { Text("Eliminar Plan") },
+            text = { Text("¿Deseas eliminar este plan?") },
+            confirmButton = {
+                Button(onClick = {
+                    planEliminar?.let {
+                        if (rol == "admin") {
+                            notificacionesViewModel.eliminarPlanAdmin(it.id, rol)
+                        }
+                    }
+                    planEliminar = null
+                }) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { planEliminar = null }) { Text("Cancelar") }
             }
+        )
+    }
+
+    /* ================= RESULTADOS ================= */
+    mensajeResultado?.let {
+        AlertDialog(
+            onDismissRequest = { mensajeResultado = null },
+            confirmButton = {
+                TextButton(onClick = { mensajeResultado = null }) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Estado") },
+            text = { Text(it) }
+        )
+    }
+
+    /* ================= ERRORES ================= */
+    error?.let {
+        AlertDialog(
+            onDismissRequest = { notificacionesViewModel.clearError() },
+            confirmButton = {
+                TextButton(onClick = { notificacionesViewModel.clearError() }) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Error") },
+            text = { Text(it) }
         )
     }
 }
 
+/* ================= CARD PLAN ================= */
 @Composable
-fun PlanCard(plan: Plan, onReserveClick: (Plan) -> Unit) {
+fun PlanCard(plan: Plan, rol: String, onReservar: () -> Unit, onEliminar: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column {
-
-            // Imagen desde URL usando Coil
             AsyncImage(
                 model = plan.imagenUrl,
-                contentDescription = "Imagen de ${plan.nombre}",
+                contentDescription = plan.nombre,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp),
                 contentScale = ContentScale.Crop
             )
 
-            Column(modifier = Modifier.padding(16.dp)) {
-
+            Column(Modifier.padding(16.dp)) {
                 Text(plan.nombre, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("Duración: ${plan.duracion} min", color = Color.Gray)
+                Text("Nivel: ${plan.nivel}")
+                Spacer(Modifier.height(8.dp))
+                Text(plan.objetivo)
 
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Duración: ${plan.duracion} minutos", fontSize = 14.sp, color = Color.Gray)
-
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Nivel: ${plan.nivel}", fontSize = 14.sp)
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(plan.objetivo, fontSize = 16.sp)
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Precio + Botón reservar
-                Box(modifier = Modifier.fillMaxWidth()) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         "$${plan.precio}",
-                        modifier = Modifier.align(Alignment.CenterStart),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    Button(
-                        onClick = { onReserveClick(plan) },
-                        modifier = Modifier.align(Alignment.CenterEnd)
-                    ) {
-                        Text("Reservar")
+                    Row {
+                        Button(onClick = onReservar) { Text("Tomar Plan") }
+                        Spacer(Modifier.width(8.dp))
                     }
                 }
             }
         }
     }
-}
-
-@Composable
-fun ReservationDialog(activityName: String, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
-    var quantity by remember { mutableIntStateOf(1) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Reservar: $activityName") },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("¿Cuántas clases deseas reservar?")
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    IconButton(onClick = { if (quantity > 1) quantity-- }) {
-                        Icon(Icons.Default.Remove, contentDescription = "Reducir cantidad")
-                    }
-                    Text(quantity.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    IconButton(onClick = { if (quantity < 5) quantity++ }) {
-                        Icon(Icons.Default.Add, contentDescription = "Aumentar cantidad")
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(quantity) }) {
-                Text("Confirmar reserva")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
-    )
 }
