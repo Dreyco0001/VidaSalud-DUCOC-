@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.vidasalud.model.NotificacionPlan
 import com.example.vidasalud.model.Plan
 import com.example.vidasalud.ui.screens.compartido.BarraNavegacionPrincipal
 import com.example.vidasalud.viewmodel.GestionPlanesViewModel
@@ -38,10 +39,10 @@ fun CatalogoScreen(
     val error by notificacionesViewModel.error.collectAsState()
 
     var planSeleccionado by remember { mutableStateOf<Plan?>(null) }
+    var notificacionEliminar by remember { mutableStateOf<NotificacionPlan?>(null) }
     var mostrarConfirmacion by remember { mutableStateOf(false) }
     var mostrarNotificaciones by remember { mutableStateOf(false) }
     var mensajeResultado by remember { mutableStateOf<String?>(null) }
-    var planEliminar by remember { mutableStateOf<Plan?>(null) }
 
     LaunchedEffect(Unit) {
         notificacionesViewModel.cargarNotificaciones(rol)
@@ -64,8 +65,7 @@ fun CatalogoScreen(
             }
         }
 
-        /* ============ NOTIFICACIONES FIREBASE ============ */
-        /* ============ NOTIFICACIONES FIREBASE ============ */
+        /* ================= NOTIFICACIONES ================= */
         if (mostrarNotificaciones) {
             Card(
                 modifier = Modifier
@@ -74,6 +74,17 @@ fun CatalogoScreen(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F6FA))
             ) {
                 Column(Modifier.padding(12.dp)) {
+
+                    if (rol == "admin") {
+                        Text(
+                            "🛡️ Vista Admin – todas las notificaciones",
+                            fontSize = 13.sp,
+                            color = Color(0xFF1565C0),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(6.dp))
+                    }
+
                     Text("Planes Tomados", fontWeight = FontWeight.Bold)
 
                     if (notificaciones.isEmpty()) {
@@ -81,30 +92,37 @@ fun CatalogoScreen(
                     } else {
                         notificaciones.forEach { noti ->
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    // Mostrar plan y precio
-                                    Text("• ${noti.nombrePlan} - $${noti.precio}")
-                                    // Si es admin, mostrar usuario
+                                    Text(
+                                        noti.nombrePlan,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    )
+                                    Text(
+                                        "Plan por 1 día · $${noti.precio}",
+                                        fontSize = 13.sp,
+                                        color = Color.Gray
+                                    )
+
                                     if (rol == "admin") {
                                         Text(
-                                            "Usuario: ${noti.userId}",
+                                            "Usuario: ${noti.nombreUsuario}",
                                             fontSize = 12.sp,
-                                            color = Color.Gray
+                                            color = Color.DarkGray
                                         )
                                     }
                                 }
 
-                                // Solo admin puede eliminar plan desde notificaciones
-                                if (rol == "admin") {
-                                    TextButton(onClick = {
-                                        notificacionesViewModel.eliminarPlanAdmin(noti.id, rol)
-                                    }) {
-                                        Text("Eliminar", color = Color.Red)
-                                    }
+                                TextButton(onClick = {
+                                    notificacionEliminar = noti
+                                }) {
+                                    Text("Eliminar", color = Color.Red)
                                 }
                             }
                         }
@@ -113,8 +131,7 @@ fun CatalogoScreen(
             }
         }
 
-
-        /* ================= CONTENIDO ================= */
+        /* ================= PLANES ================= */
         if (cargando) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -126,17 +143,10 @@ fun CatalogoScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(planes) { plan ->
-                    PlanCard(
-                        plan = plan,
-                        rol = rol,
-                        onReservar = {
-                            planSeleccionado = plan
-                            mostrarConfirmacion = true
-                        },
-                        onEliminar = {
-                            planEliminar = plan
-                        }
-                    )
+                    PlanCard(plan = plan) {
+                        planSeleccionado = plan
+                        mostrarConfirmacion = true
+                    }
                 }
             }
         }
@@ -157,9 +167,11 @@ fun CatalogoScreen(
                 title = { Text("Confirmar Plan") },
                 text = {
                     Column {
-                        Text(plan.nombre, fontWeight = FontWeight.Bold)
-                        Text(plan.objetivo)
+                        Text(plan.nombre, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("📅 Plan por 1 día", color = Color.Gray)
                         Spacer(Modifier.height(8.dp))
+                        Text(plan.objetivo)
+                        Spacer(Modifier.height(6.dp))
                         Text("🍽 ${plan.comidaRecomendada}")
                         Text("Precio: $${plan.precio}")
                     }
@@ -188,25 +200,29 @@ fun CatalogoScreen(
     }
 
     /* ================= CONFIRMAR ELIMINAR ================= */
-    planEliminar?.let { plan ->
+    notificacionEliminar?.let { noti ->
         AlertDialog(
-            onDismissRequest = { planEliminar = null },
-            title = { Text("Eliminar Plan") },
-            text = { Text("¿Deseas eliminar este plan?") },
+            onDismissRequest = { notificacionEliminar = null },
+            title = { Text("Eliminar notificación") },
+            text = { Text("¿Deseas eliminar este plan tomado?") },
             confirmButton = {
                 Button(onClick = {
-                    planEliminar?.let {
-                        if (rol == "admin") {
-                            notificacionesViewModel.eliminarPlanAdmin(it.id, rol)
+                    notificacionesViewModel.eliminarNotificacion(
+                        id = noti.id,
+                        rol = rol,
+                        onOk = {
+                            mensajeResultado = "🗑️ Notificación eliminada"
                         }
-                    }
-                    planEliminar = null
+                    )
+                    notificacionEliminar = null
                 }) {
                     Text("Eliminar")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { planEliminar = null }) { Text("Cancelar") }
+                TextButton(onClick = { notificacionEliminar = null }) {
+                    Text("Cancelar")
+                }
             }
         )
     }
@@ -242,7 +258,10 @@ fun CatalogoScreen(
 
 /* ================= CARD PLAN ================= */
 @Composable
-fun PlanCard(plan: Plan, rol: String, onReservar: () -> Unit, onEliminar: () -> Unit) {
+fun PlanCard(
+    plan: Plan,
+    onReservar: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -259,13 +278,12 @@ fun PlanCard(plan: Plan, rol: String, onReservar: () -> Unit, onEliminar: () -> 
             )
 
             Column(Modifier.padding(16.dp)) {
-                Text(plan.nombre, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text("Duración: ${plan.duracion} min", color = Color.Gray)
-                Text("Nivel: ${plan.nivel}")
-                Spacer(Modifier.height(8.dp))
+                Text(plan.nombre, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("📅 Plan por 1 día", color = Color.Gray, fontSize = 13.sp)
+                Spacer(Modifier.height(6.dp))
                 Text(plan.objetivo)
-
                 Spacer(Modifier.height(12.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -278,9 +296,8 @@ fun PlanCard(plan: Plan, rol: String, onReservar: () -> Unit, onEliminar: () -> 
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    Row {
-                        Button(onClick = onReservar) { Text("Tomar Plan") }
-                        Spacer(Modifier.width(8.dp))
+                    Button(onClick = onReservar) {
+                        Text("Tomar Plan")
                     }
                 }
             }

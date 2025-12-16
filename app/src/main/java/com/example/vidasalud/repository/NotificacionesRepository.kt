@@ -10,10 +10,16 @@ class NotificacionesRepository {
 
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
-    private val collection = db.collection("notificaciones_planes")
+
+    private val notificacionesCol = db.collection("notificaciones_planes")
+    private val usuariosCol = db.collection("usuario")
+
+    private companion object {
+        const val EXPIRACION_42_HORAS = 42 * 60 * 60 * 1000L
+    }
 
     // --------------------------------------------------
-    // TOMAR PLAN (CLIENTE O ADMIN)
+    // TOMAR PLAN
     // --------------------------------------------------
     suspend fun tomarPlan(
         plan: Plan,
@@ -23,7 +29,10 @@ class NotificacionesRepository {
             val user = auth.currentUser
                 ?: return Result.failure(Exception("Usuario no autenticado"))
 
-            val doc = collection.document()
+            val usuarioSnap = usuariosCol.document(user.uid).get().await()
+            val nombreUsuario = usuarioSnap.getString("nombre") ?: "Desconocido"
+
+            val doc = notificacionesCol.document()
             val ahora = System.currentTimeMillis()
 
             val notificacion = NotificacionPlan(
@@ -38,7 +47,8 @@ class NotificacionesRepository {
                 userId = user.uid,
                 userRol = rolUsuario,
                 fechaToma = ahora,
-                estado = "activo"
+                estado = "activo",
+                nombreUsuario = nombreUsuario
             )
 
             doc.set(notificacion).await()
@@ -52,26 +62,34 @@ class NotificacionesRepository {
     // --------------------------------------------------
     // OBTENER NOTIFICACIONES
     // ADMIN: TODAS
-    // CLIENTE: SOLO LAS SUYAS
+    // CLIENTE: SOLO LAS SUYAS + NO EXPIRADAS (42H)
     // --------------------------------------------------
     suspend fun obtenerNotificaciones(rol: String): List<NotificacionPlan> {
         val user = auth.currentUser ?: return emptyList()
+        val ahora = System.currentTimeMillis()
 
-        val query = if (rol == "admin") {
-            collection
+        val querySnapshot = if (rol == "admin") {
+            notificacionesCol.get().await()
         } else {
-            collection.whereEqualTo("userId", user.uid)
+            notificacionesCol
+                .whereEqualTo("userId", user.uid)
+                .get()
+                .await()
         }
 
-        return query.get().await().toObjects(NotificacionPlan::class.java)
+        return querySnapshot.toObjects(NotificacionPlan::class.java)
+            .filter { noti ->
+                rol == "admin" || (ahora - noti.fechaToma) <= EXPIRACION_42_HORAS
+            }
+            .sortedByDescending { it.fechaToma }
     }
 
     // --------------------------------------------------
-    // CANCELAR PLAN (ANTES DE 12 HORAS)
+    // CANCELAR PLAN (12 HORAS)
     // --------------------------------------------------
     suspend fun cancelarPlan(id: String, rol: String): Result<Unit> {
         return try {
-            val doc = collection.document(id)
+            val doc = notificacionesCol.document(id)
             val noti = doc.get().await()
                 .toObject(NotificacionPlan::class.java)
                 ?: return Result.failure(Exception("Notificación no encontrada"))
@@ -94,15 +112,28 @@ class NotificacionesRepository {
     }
 
     // --------------------------------------------------
-    // ELIMINAR NOTIFICACIÓN (SOLO ADMIN)
+    // ELIMINAR NOTIFICACIÓN
+    // ADMIN: CUALQUIERA
+    // CLIENTE: SOLO LA SUYA
     // --------------------------------------------------
-    suspend fun eliminarNotificacion(id: String, rol: String): Result<Unit> {
+    suspend fun eliminarNotificacion(
+        id: String,
+        rol: String
+    ): Result<Unit> {
         return try {
-            if (rol != "admin") {
+            val user = auth.currentUser
+                ?: return Result.failure(Exception("Usuario no autenticado"))
+
+            val doc = notificacionesCol.document(id)
+            val noti = doc.get().await()
+                .toObject(NotificacionPlan::class.java)
+                ?: return Result.failure(Exception("Notificación no encontrada"))
+
+            if (rol != "admin" && noti.userId != user.uid) {
                 return Result.failure(Exception("Acción no autorizada"))
             }
 
-            collection.document(id).delete().await()
+            doc.delete().await()
             Result.success(Unit)
 
         } catch (e: Exception) {

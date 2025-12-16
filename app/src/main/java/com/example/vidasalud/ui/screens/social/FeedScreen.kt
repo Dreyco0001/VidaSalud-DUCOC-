@@ -40,6 +40,9 @@ fun FeedScreen(
     var comentarioEditar by remember { mutableStateOf<Comentario?>(null) }
     var textoEditado by remember { mutableStateOf("") }
 
+    // 🔥 NUEVO: comentario a eliminar (confirmación)
+    var comentarioAEliminar by remember { mutableStateOf<Comentario?>(null) }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
@@ -88,7 +91,8 @@ fun FeedScreen(
                         canDelete = canDelete,
                         currentUserId = currentUserId,
                         onDelete = {
-                            feedViewModel.eliminarComentario(comentario.id, currentIsAdmin)
+                            // 🔥 SOLO guardamos, no eliminamos directo
+                            comentarioAEliminar = comentario
                         },
                         onEdit = {
                             comentarioEditar = comentario
@@ -138,6 +142,7 @@ fun FeedScreen(
         }
     }
 
+    // ✏️ DIALOGO EDITAR
     if (comentarioEditar != null) {
         AlertDialog(
             onDismissRequest = { comentarioEditar = null },
@@ -170,8 +175,41 @@ fun FeedScreen(
             }
         )
     }
-}
 
+    // 🗑️ DIALOGO CONFIRMAR ELIMINACIÓN (🔥 LO QUE PEDISTE)
+    if (comentarioAEliminar != null) {
+        AlertDialog(
+            onDismissRequest = { comentarioAEliminar = null },
+            title = { Text("Eliminar comentario") },
+            text = {
+                Text("¿Seguro que deseas eliminar este comentario? Esta acción no se puede deshacer.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        feedViewModel.eliminarComentario(
+                            comentarioAEliminar!!.id,
+                            currentIsAdmin
+                        )
+                        comentarioAEliminar = null
+                    }
+                ) {
+                    Text(
+                        text = "Eliminar",
+                        color = Color.Red
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { comentarioAEliminar = null }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
 
 @Composable
 fun ChatItem(
@@ -191,14 +229,10 @@ fun ChatItem(
     var listener by remember { mutableStateOf<ListenerRegistration?>(null) }
 
     DisposableEffect(comentario.id) {
-
         listener = viewModel.repoPublic.escucharLikes(comentario.id) { likes ->
             likeCount = likes.size
         }
-
-        onDispose {
-            listener?.remove()
-        }
+        onDispose { listener?.remove() }
     }
 
     Column(
@@ -242,7 +276,6 @@ fun ChatItem(
         }
     }
 }
-
 
 fun puedeEditarLocal(c: Comentario, userId: String, isAdmin: Boolean): Boolean {
     if (isAdmin) return true

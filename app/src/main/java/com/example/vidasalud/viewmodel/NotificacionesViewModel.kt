@@ -19,29 +19,25 @@ class NotificacionesViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    // --------------------------------------------------
-    // LIMPIAR ERROR (🔥 ESTO SOLUCIONA TU CRASH)
-    // --------------------------------------------------
     fun clearError() {
         _error.value = null
     }
 
     // --------------------------------------------------
     // CARGAR NOTIFICACIONES
-    // ADMIN: TODAS | CLIENTE: SOLO LAS SUYAS
     // --------------------------------------------------
     fun cargarNotificaciones(rol: String) {
         viewModelScope.launch {
             try {
                 _notificaciones.value = repo.obtenerNotificaciones(rol)
             } catch (e: Exception) {
-                _error.value = e.localizedMessage ?: "Error desconocido"
+                _error.value = e.message ?: "Error al cargar notificaciones"
             }
         }
     }
 
     // --------------------------------------------------
-    // TOMAR PLAN (CLIENTE O ADMIN)
+    // TOMAR PLAN
     // --------------------------------------------------
     fun tomarPlan(
         plan: Plan,
@@ -59,31 +55,39 @@ class NotificacionesViewModel(
     }
 
     // --------------------------------------------------
-    // CANCELAR PLAN (ANTES DE 12 HORAS)
+    // CANCELAR PLAN
     // --------------------------------------------------
-    fun cancelarPlan(id: String, rol: String) {
+    fun cancelarPlan(
+        id: String,
+        rol: String,
+        onOk: () -> Unit
+    ) {
         viewModelScope.launch {
             val result = repo.cancelarPlan(id, rol)
-            if (result.isFailure) {
-                _error.value = result.exceptionOrNull()?.message
-            } else {
+            if (result.isSuccess) {
+                onOk()
                 cargarNotificaciones(rol)
+            } else {
+                _error.value = result.exceptionOrNull()?.message
             }
         }
     }
 
     // --------------------------------------------------
-    // ELIMINAR PLAN (SOLO ADMIN)
+    // ELIMINAR NOTIFICACIÓN (ADMIN O DUEÑO)
     // --------------------------------------------------
-    fun eliminarPlanAdmin(id: String, rol: String) {
+    fun eliminarNotificacion(
+        id: String,
+        rol: String,
+        onOk: () -> Unit
+    ) {
         viewModelScope.launch {
-            if (rol != "admin") return@launch
-
             val result = repo.eliminarNotificacion(id, rol)
-            if (result.isFailure) {
-                _error.value = result.exceptionOrNull()?.message
-            } else {
+            if (result.isSuccess) {
+                onOk()
                 cargarNotificaciones(rol)
+            } else {
+                _error.value = result.exceptionOrNull()?.message
             }
         }
     }
