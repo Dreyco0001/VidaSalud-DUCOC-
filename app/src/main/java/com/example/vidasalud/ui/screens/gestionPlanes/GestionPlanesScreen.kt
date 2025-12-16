@@ -60,6 +60,13 @@ fun GestionPlanesScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text("${planes.size} plan(es) cargado(s)", color = Color.Gray)
+
+                    // 🔔 AVISO ÚNICO AGREGADO (NO SE MODIFICA NADA MÁS)
+                    Text(
+                        text = "ℹ️ Todos los planes tienen una duración de 1 día.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 
