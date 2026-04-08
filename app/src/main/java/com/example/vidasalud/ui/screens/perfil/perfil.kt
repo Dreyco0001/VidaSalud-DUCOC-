@@ -39,7 +39,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
+import com.example.vidasalud.pdf.PdfGenerator
+import androidx.core.content.edit
+import android.content.Intent
+import android.content.ClipData
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
@@ -73,6 +78,7 @@ fun PerfilScreen(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun ContenidoPerfil(
     modifier: Modifier = Modifier,
@@ -330,6 +336,38 @@ fun ContenidoPerfil(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        Button(
+            onClick = {
+                val uri = PdfGenerator.generarInforme(context, nombre)
+
+                if (uri != null) {
+
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "application/pdf")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        clipData = ClipData.newRawUri("", uri)
+                    }
+
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            "No hay app para abrir PDFs",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+
+                } else {
+                    Toast.makeText(context, "Error al generar PDF", Toast.LENGTH_SHORT).show()
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("📄 Generar y abrir informe")
+        }
+
         if (rol.lowercase() == "admin") {
 
             Button(
@@ -365,7 +403,7 @@ fun ContenidoPerfil(
 
 private fun saveProfileImageUri(context: Context, uri: Uri) {
     val prefs = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
-    prefs.edit().putString("profile_image_uri", uri.toString()).apply()
+    prefs.edit {putString("profile_image_uri", uri.toString())}
 }
 
 private fun loadProfileImageUri(context: Context): Uri? {
