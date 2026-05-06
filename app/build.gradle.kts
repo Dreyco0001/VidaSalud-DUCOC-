@@ -53,7 +53,7 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
     // 🔹 UI & Compose
-    implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -84,26 +84,42 @@ dependencies {
     implementation(libs.ui)
     implementation(libs.androidx.foundation)
 
-    // 🔹 Tests
+    // ═══════════════════════════════════════
+    // 🔹 SECCIÓN DE TESTS (MODIFICADA)
+    // ═══════════════════════════════════════
+
+    // JUnit 4 (mantenido por compatibilidad)
     testImplementation(libs.junit)
+
+    // JUnit 5 (actualizado)
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")  // Mantienes tu versión
+
+    // JUnit Platform Suite (NUEVO - necesario para Cucumber)
+    testImplementation("org.junit.platform:junit-platform-suite:1.10.0")
+    testImplementation("org.junit.platform:junit-platform-launcher:1.10.0")
+
+    // Cucumber (NUEVO)
+    testImplementation("io.cucumber:cucumber-kotlin:7.20.1")
+    testImplementation("io.cucumber:cucumber-junit-platform-engine:7.20.1")
+
+    // Kotest (mantienes tu versión)
+    testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
+    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
+
+    // MockK (mantienes tu versión)
+    testImplementation("io.mockk:mockk:1.13.10")
+
+    // Android Test (sin cambios)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
 
-    // Kotest
-    testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
-    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
-
-    //JUnit5
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-
-    //MockK
-    testImplementation("io.mockk:mockk:1.13.10")
-
-    //Compose UI Test
+    // Compose UI Test (mantienes tu versión)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.2")
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.2")
+
+    // Debug (sin cambios)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }
