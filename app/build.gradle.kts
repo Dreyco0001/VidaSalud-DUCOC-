@@ -98,10 +98,6 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-suite:1.10.0")
     testImplementation("org.junit.platform:junit-platform-launcher:1.10.0")
 
-    // Cucumber (NUEVO)
-    testImplementation("io.cucumber:cucumber-kotlin:7.20.1")
-    testImplementation("io.cucumber:cucumber-junit-platform-engine:7.20.1")
-
     // Kotest (mantienes tu versión)
     testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
     testImplementation("io.kotest:kotest-assertions-core:5.8.0")
